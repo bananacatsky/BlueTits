@@ -1,27 +1,33 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BlueTits — Artist Commissions</title>
+  <title>BlueTits — Commission Flow Mock</title>
   <style>
     :root {
-      --bg: #f5f5f2;
+      --bg: #f5f6f8;
       --surface: #ffffff;
-      --surface-soft: #fafaf8;
-      --text: #181818;
-      --muted: #777772;
-      --border: #e3e3dc;
-      --border-strong: #cfcfc6;
-      --accent: #181818;
+      --soft: #f9fafb;
+      --text: #17202a;
+      --muted: #737b86;
+      --border: #e4e7eb;
+      --border-strong: #ccd2d9;
+      --blue: #1778d3;
+      --blue-soft: #eef6ff;
+      --green: #2f7d4a;
+      --green-soft: #eef8f1;
+      --red: #a94742;
+      --red-soft: #fff1f0;
+      --amber: #8a6616;
+      --amber-soft: #fff8e7;
       --radius: 20px;
-      --shadow: 0 14px 40px rgba(0,0,0,.055);
+      --shadow: 0 15px 40px rgba(20, 31, 45, .06);
     }
 
     * { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
-
     body {
       margin: 0;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -29,14 +35,13 @@
       color: var(--text);
     }
 
-    button, input, textarea { font: inherit; }
-
+    button, input, textarea, select { font: inherit; }
     button { color: inherit; }
 
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: min(1140px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 28px 0 90px;
+      padding: 24px 0 88px;
     }
 
     .topbar {
@@ -44,7 +49,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 24px;
-      margin-bottom: 54px;
+      margin-bottom: 52px;
     }
 
     .brand {
@@ -54,54 +59,46 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 16px;
+      gap: 15px;
       text-align: left;
     }
 
     .brand-logo {
-      width: 74px;
-      height: 74px;
+      width: 72px;
+      height: 72px;
       object-fit: cover;
       border-radius: 18px;
-      display: block;
       background: white;
-      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+      box-shadow: 0 6px 20px rgba(0,0,0,.06);
     }
 
     .brand-name {
-      color: #1778d3;
-      font-size: clamp(36px, 5vw, 58px);
+      color: var(--blue);
+      font-size: clamp(38px, 5vw, 58px);
       line-height: .9;
       letter-spacing: -.055em;
-      font-weight: 800;
+      font-weight: 820;
     }
 
-    .session {
+    .role-switcher {
       display: flex;
       align-items: center;
       gap: 10px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
     }
 
-    .session-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #5f8f61;
-      box-shadow: 0 0 0 4px rgba(95,143,97,.11);
-    }
-
-    .session strong {
+    .role-switcher select {
+      border: 1px solid var(--border);
+      background: var(--surface);
       color: var(--text);
-      font-weight: 650;
+      border-radius: 999px;
+      padding: 9px 34px 9px 13px;
+      outline: none;
+      cursor: pointer;
     }
 
-    .view {
-      display: none;
-      animation: enter .18s ease both;
-    }
-
+    .view { display: none; animation: enter .18s ease both; }
     .view.active { display: block; }
 
     @keyframes enter {
@@ -122,12 +119,12 @@
       font-size: clamp(44px, 8vw, 86px);
       line-height: .93;
       letter-spacing: -.058em;
-      font-weight: 720;
+      font-weight: 740;
     }
 
     .lead {
       margin: 18px 0 0;
-      max-width: 520px;
+      max-width: 570px;
       color: var(--muted);
       line-height: 1.55;
       font-size: 15px;
@@ -135,18 +132,32 @@
 
     .home-head {
       display: flex;
-      align-items: end;
       justify-content: space-between;
+      align-items: end;
       gap: 30px;
-      margin-bottom: 40px;
+      margin-bottom: 36px;
     }
 
     .home-note {
-      max-width: 390px;
+      max-width: 410px;
       color: var(--muted);
       line-height: 1.55;
       font-size: 14px;
       margin: 0 0 4px;
+    }
+
+    .demo-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      border: 1px solid #d9eaff;
+      background: var(--blue-soft);
+      color: #365a7b;
+      border-radius: 16px;
+      padding: 13px 15px;
+      margin-bottom: 22px;
+      font-size: 13px;
+      line-height: 1.45;
     }
 
     .artist-grid {
@@ -176,7 +187,7 @@
       position: relative;
       aspect-ratio: 4 / 3;
       overflow: hidden;
-      background: #ecece7;
+      background: #eceff2;
     }
 
     .artist-cover img {
@@ -193,33 +204,20 @@
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.92);
       backdrop-filter: blur(7px);
-      border: 1px solid rgba(255,255,255,.7);
+      border: 1px solid rgba(255,255,255,.75);
       border-radius: 999px;
       padding: 6px 9px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 720;
     }
 
     .artist-info { padding: 16px 17px 18px; }
+    .artist-name { font-size: 19px; font-weight: 690; letter-spacing: -.025em; }
+    .artist-meta { margin-top: 6px; color: var(--muted); font-size: 13px; }
 
-    .artist-name {
-      font-size: 19px;
-      font-weight: 680;
-      letter-spacing: -.025em;
-    }
-
-    .artist-meta {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .profile-nav {
-      margin-bottom: 38px;
-    }
-
+    .profile-nav { margin-bottom: 34px; }
     .back {
       border: 0;
       background: transparent;
@@ -228,25 +226,18 @@
       cursor: pointer;
       font-size: 14px;
     }
-
     .back:hover { color: var(--text); }
 
-    .profile-header {
-      margin-bottom: 38px;
-    }
-
+    .profile-header { margin-bottom: 28px; }
     .profile-title-row {
       display: flex;
       align-items: end;
       justify-content: space-between;
       gap: 22px;
     }
+    .profile-title-row h1 { font-size: clamp(42px, 7vw, 76px); }
 
-    .profile-title-row h1 {
-      font-size: clamp(42px, 7vw, 76px);
-    }
-
-    .owner-pill {
+    .identity-pill {
       display: none;
       white-space: nowrap;
       padding: 9px 12px;
@@ -257,8 +248,30 @@
       font-size: 12px;
       margin-bottom: 5px;
     }
+    .identity-pill.visible { display: inline-block; }
 
-    .owner-pill.visible { display: inline-block; }
+    .tabs {
+      display: none;
+      gap: 8px;
+      margin: 0 0 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tabs.visible { display: flex; }
+    .tab {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      padding: 12px 5px 11px;
+      margin-right: 12px;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--blue); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
 
     .commission-grid {
       display: grid;
@@ -272,7 +285,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
-      min-height: 330px;
+      min-height: 350px;
     }
 
     .commission-card img {
@@ -280,29 +293,42 @@
       width: 100%;
       aspect-ratio: 4 / 3;
       object-fit: cover;
-      background: #ecece7;
+      background: #eceff2;
     }
 
     .card-body { padding: 18px; }
-
-    .card-title {
-      margin: 0 0 7px;
-      font-size: 18px;
-      letter-spacing: -.02em;
-    }
-
+    .card-title { margin: 0 0 7px; font-size: 18px; letter-spacing: -.02em; }
     .card-description {
-      margin: 0 0 18px;
+      margin: 0 0 16px;
       color: var(--muted);
       line-height: 1.45;
       font-size: 13.5px;
       min-height: 40px;
     }
 
-    .price {
-      font-size: 15px;
-      font-weight: 720;
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
     }
+
+    .price { font-size: 15px; font-weight: 740; }
+
+    .small-button {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: white;
+      padding: 8px 11px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .small-button:hover { border-color: var(--border-strong); }
+    .small-button.primary { background: var(--blue); color: white; border-color: var(--blue); }
+    .small-button.danger { color: var(--red); }
+    .small-button:disabled { cursor: default; opacity: .58; }
 
     .delete-card {
       display: none;
@@ -320,12 +346,11 @@
       font-size: 17px;
       box-shadow: 0 3px 12px rgba(0,0,0,.08);
     }
-
     .commission-card.local-card .delete-card { display: grid; }
 
     .add-card {
-      min-height: 330px;
-      border: 1px dashed #c9c9c1;
+      min-height: 350px;
+      border: 1px dashed #c9cfd5;
       border-radius: var(--radius);
       background: transparent;
       cursor: pointer;
@@ -334,20 +359,14 @@
       justify-content: center;
       transition: transform .18s ease, background .18s ease, border-color .18s ease;
     }
-
     .add-card.visible { display: flex; }
-
     .add-card:hover {
       transform: translateY(-2px);
-      background: rgba(255,255,255,.5);
-      border-color: #99998f;
+      background: rgba(255,255,255,.55);
+      border-color: #9da5ae;
     }
 
-    .add-inner {
-      text-align: center;
-      padding: 28px;
-    }
-
+    .add-inner { text-align: center; padding: 28px; }
     .plus {
       width: 54px;
       height: 54px;
@@ -360,34 +379,123 @@
       font-size: 30px;
       font-weight: 300;
     }
+    .add-label { font-size: 15px; font-weight: 680; }
+    .add-hint { margin-top: 6px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 
-    .add-label {
-      font-size: 15px;
-      font-weight: 680;
+    .request-list {
+      display: grid;
+      gap: 14px;
     }
 
-    .add-hint {
-      margin-top: 6px;
-      font-size: 12.5px;
+    .request-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: 0 8px 26px rgba(20,31,45,.025);
+    }
+
+    .request-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .request-title { font-size: 17px; font-weight: 720; letter-spacing: -.02em; }
+    .request-subtitle { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+    .request-message {
+      margin: 13px 0 0;
+      padding: 13px 14px;
+      border-radius: 13px;
+      background: var(--soft);
+      color: #4f5863;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .status-requested { background: var(--amber-soft); color: var(--amber); }
+    .status-offered { background: var(--blue-soft); color: #2d6291; }
+    .status-paid { background: var(--green-soft); color: var(--green); }
+    .status-delivered { background: #f1efff; color: #6652a3; }
+    .status-declined { background: var(--red-soft); color: var(--red); }
+
+    .request-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .offer-box {
+      margin-top: 14px;
+      border: 1px solid #d8e8fa;
+      background: #f7fbff;
+      border-radius: 14px;
+      padding: 13px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .offer-amount { font-size: 17px; font-weight: 780; }
+    .offer-meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
+
+    .delivery-box {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--soft);
+    }
+
+    .delivery-box img {
+      width: 100%;
+      max-height: 540px;
+      object-fit: contain;
+      display: block;
+      background: #f0f2f4;
+    }
+
+    .delivery-copy {
+      padding: 12px 14px;
       color: var(--muted);
+      font-size: 12.5px;
       line-height: 1.45;
     }
 
+    .empty-state {
+      border: 1px dashed var(--border-strong);
+      border-radius: 18px;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      background: rgba(255,255,255,.4);
+    }
+
     dialog {
-      width: min(540px, calc(100% - 24px));
+      width: min(550px, calc(100% - 24px));
       border: 1px solid var(--border);
       border-radius: 22px;
       padding: 0;
       box-shadow: 0 26px 90px rgba(0,0,0,.18);
     }
-
-    dialog::backdrop {
-      background: rgba(0,0,0,.3);
-      backdrop-filter: blur(4px);
-    }
+    dialog::backdrop { background: rgba(0,0,0,.3); backdrop-filter: blur(4px); }
 
     .modal { padding: 24px; }
-
     .modal-head {
       display: flex;
       align-items: start;
@@ -395,13 +503,7 @@
       gap: 20px;
       margin-bottom: 22px;
     }
-
-    .modal h2 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: -.025em;
-    }
-
+    .modal h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
     .close {
       border: 0;
       background: transparent;
@@ -412,40 +514,20 @@
     }
 
     .field { margin-bottom: 16px; }
-
-    label {
-      display: block;
-      margin-bottom: 7px;
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    input, textarea {
+    label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 650; }
+    input, textarea, select.input {
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--surface-soft);
+      background: var(--soft);
       padding: 12px 13px;
       color: var(--text);
       outline: none;
     }
+    input:focus, textarea:focus, select.input:focus { border-color: #aab2bb; background: var(--surface); }
+    textarea { min-height: 94px; resize: vertical; }
 
-    input:focus, textarea:focus {
-      border-color: #aaa99f;
-      background: var(--surface);
-    }
-
-    textarea {
-      min-height: 88px;
-      resize: vertical;
-    }
-
-    .price-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
+    .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .preview {
       display: none;
       width: 100%;
@@ -454,25 +536,12 @@
       border-radius: 14px;
       border: 1px dashed var(--border);
       margin-top: 10px;
-      background: var(--surface-soft);
+      background: var(--soft);
     }
-
-    .hint, .status {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
+    .hint, .status { color: var(--muted); font-size: 12px; line-height: 1.4; }
     .hint { margin-top: 7px; }
-
     .status { margin-top: 5px; min-height: 17px; }
-
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 23px;
-    }
+    .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 23px; }
 
     .button {
       border: 1px solid var(--border);
@@ -481,48 +550,49 @@
       padding: 10px 15px;
       cursor: pointer;
     }
+    .button-primary { background: var(--blue); color: white; border-color: var(--blue); }
+    .button-danger { color: var(--red); }
 
-    .button-primary {
-      background: var(--accent);
-      color: white;
-      border-color: var(--accent);
+    .privy-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--soft);
+      padding: 16px;
+      margin: 8px 0 4px;
     }
+    .privy-brand { font-weight: 820; font-size: 20px; letter-spacing: -.03em; margin-bottom: 14px; }
+    .wallet-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 9px 0;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .wallet-row:first-of-type { border-top: 0; }
+    .wallet-label { color: var(--muted); }
+    .wallet-value { font-weight: 680; text-align: right; }
 
-    .storage-note {
-      margin-top: 26px;
-      color: var(--muted);
-      font-size: 11.5px;
-    }
+    .storage-note { margin-top: 26px; color: var(--muted); font-size: 11.5px; }
 
     @media (max-width: 720px) {
-      .shell { padding-top: 20px; }
-      .topbar {
-        align-items: flex-start;
-        margin-bottom: 40px;
-      }
-
-      .brand {
-        gap: 11px;
-      }
-
-      .brand-logo {
-        width: 58px;
-        height: 58px;
-        border-radius: 14px;
-      }
-
-      .brand-name {
-        font-size: 38px;
-      }
-
+      .shell { padding-top: 18px; }
+      .topbar { align-items: flex-start; margin-bottom: 38px; }
+      .brand { gap: 10px; }
+      .brand-logo { width: 58px; height: 58px; border-radius: 14px; }
+      .brand-name { font-size: 38px; }
+      .role-switcher { display: block; text-align: right; }
+      .role-switcher span { display: block; margin-bottom: 5px; }
       .home-head, .profile-title-row { display: block; }
       .home-note { margin-top: 20px; }
-      .owner-pill { margin-top: 18px; }
+      .identity-pill { margin-top: 18px; }
     }
 
     @media (max-width: 520px) {
       .price-row { grid-template-columns: 1fr; }
-      .session span:first-of-type { display: none; }
+      .brand-name { display: none; }
+      .request-head { display: block; }
+      .status-pill { margin-top: 10px; }
     }
   </style>
 </head>
@@ -530,14 +600,17 @@
   <main class="shell">
     <header class="topbar">
       <button class="brand" id="brandButton" type="button" aria-label="BlueTits home">
-        <img class="brand-logo" src="data:image/jpeg;base64,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" alt="BlueTits logo">
+        <img class="brand-logo" src="data:image/jpeg;base64,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" alt="BlueTits logo">
         <span class="brand-name">BlueTits</span>
       </button>
-      <div class="session">
-        <span class="session-dot"></span>
-        <span>Signed in as</span>
-        <strong id="signedInName">Mira Vale</strong>
-      </div>
+
+      <label class="role-switcher">
+        <span>Viewing as</span>
+        <select id="roleSelect">
+          <option value="buyer">Buyer · Alex</option>
+          <option value="artist">Artist · Mira Vale</option>
+        </select>
+      </label>
     </header>
 
     <section class="view active" id="homeView">
@@ -547,8 +620,13 @@
           <h1>Artists</h1>
         </div>
         <p class="home-note">
-          Browse commission examples from different artists. This is a front-end prototype; your own uploads are stored only in this browser.
+          Pick a commission style, send a request, let the artist accept or decline it, then mock a crypto payment offer through Privy.
         </p>
+      </div>
+
+      <div class="demo-tip">
+        <strong>Demo flow:</strong>
+        <span>as Buyer, request a commission from Mira Vale → switch to Artist → open Mira's Requests → send an offer → switch back to Buyer → pay with the mock Privy wallet.</span>
       </div>
 
       <div class="artist-grid" id="artistGrid"></div>
@@ -563,20 +641,31 @@
         <div class="eyebrow">Artist profile</div>
         <div class="profile-title-row">
           <h1 id="profileName">Artist</h1>
-          <div class="owner-pill" id="ownerPill">Your profile · editable</div>
+          <div class="identity-pill" id="identityPill"></div>
         </div>
         <p class="lead" id="profileBio"></p>
       </header>
 
-      <div class="commission-grid" id="commissionGrid">
-        <button class="add-card" id="addCard" type="button">
-          <div class="add-inner">
-            <div class="plus">+</div>
-            <div class="add-label">Add commission</div>
-            <div class="add-hint">Upload an example, description and price range.</div>
-          </div>
-        </button>
-      </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab active" id="commissionsTab" type="button">Commissions</button>
+        <button class="tab" id="requestsTab" type="button">Requests</button>
+      </nav>
+
+      <section class="panel active" id="commissionsPanel">
+        <div class="commission-grid" id="commissionGrid">
+          <button class="add-card" id="addCard" type="button">
+            <div class="add-inner">
+              <div class="plus">+</div>
+              <div class="add-label">Add commission</div>
+              <div class="add-hint">Upload an example, description and price range.</div>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" id="requestsPanel">
+        <div class="request-list" id="requestList"></div>
+      </section>
 
       <div class="storage-note" id="storageNote"></div>
     </section>
@@ -585,256 +674,280 @@
   <dialog id="commissionDialog">
     <form class="modal" id="commissionForm">
       <div class="modal-head">
-        <div>
-          <div class="eyebrow">Your profile</div>
-          <h2>Add commission</h2>
-        </div>
-        <button class="close" id="closeDialog" type="button" aria-label="Close">×</button>
+        <div><div class="eyebrow">Your profile</div><h2>Add commission</h2></div>
+        <button class="close" data-close="commissionDialog" type="button">×</button>
       </div>
-
       <div class="field">
         <label for="imageInput">Example image</label>
         <input id="imageInput" type="file" accept="image/*" required />
         <img class="preview" id="preview" alt="Image preview" />
-        <div class="hint">
-          Large uploads are resized and compressed aggressively before being saved to localStorage.
-        </div>
+        <div class="hint">Large uploads are resized and aggressively compressed before localStorage.</div>
         <div class="status" id="imageStatus"></div>
       </div>
-
       <div class="field">
         <label for="titleInput">Commission type</label>
         <input id="titleInput" type="text" placeholder="e.g. Half-body portrait" required />
       </div>
-
       <div class="field">
         <label for="descriptionInput">Description</label>
         <textarea id="descriptionInput" placeholder="Style, deliverables, limitations, turnaround..."></textarea>
       </div>
-
       <div class="price-row">
-        <div class="field">
-          <label for="minPrice">Price from, USD</label>
-          <input id="minPrice" type="number" min="0" step="1" placeholder="60" required />
-        </div>
-        <div class="field">
-          <label for="maxPrice">Price to, USD</label>
-          <input id="maxPrice" type="number" min="0" step="1" placeholder="140" required />
-        </div>
+        <div class="field"><label for="minPrice">Price from, USD</label><input id="minPrice" type="number" min="0" step="1" placeholder="60" required /></div>
+        <div class="field"><label for="maxPrice">Price to, USD</label><input id="maxPrice" type="number" min="0" step="1" placeholder="140" required /></div>
       </div>
-
       <div class="actions">
-        <button class="button" id="cancelButton" type="button">Cancel</button>
+        <button class="button" data-close="commissionDialog" type="button">Cancel</button>
         <button class="button button-primary" type="submit">Save commission</button>
       </div>
     </form>
   </dialog>
 
+  <dialog id="requestDialog">
+    <form class="modal" id="requestForm">
+      <div class="modal-head">
+        <div><div class="eyebrow">Commission request</div><h2>Send request</h2></div>
+        <button class="close" data-close="requestDialog" type="button">×</button>
+      </div>
+      <div class="field">
+        <label>Selected commission</label>
+        <div id="requestCommissionSummary" class="privy-card"></div>
+      </div>
+      <div class="field">
+        <label for="requestMessage">What would you like the artist to make?</label>
+        <textarea id="requestMessage" placeholder="Describe the character, scene, references, deadline or other important details..." required></textarea>
+      </div>
+      <div class="actions">
+        <button class="button" data-close="requestDialog" type="button">Cancel</button>
+        <button class="button button-primary" type="submit">Send request</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="offerDialog">
+    <form class="modal" id="offerForm">
+      <div class="modal-head">
+        <div><div class="eyebrow">Accept request</div><h2>Create payment offer</h2></div>
+        <button class="close" data-close="offerDialog" type="button">×</button>
+      </div>
+      <div class="field">
+        <label for="offerAmount">Final price, USD</label>
+        <input id="offerAmount" type="number" min="1" step="1" required />
+      </div>
+      <div class="price-row">
+        <div class="field">
+          <label for="offerToken">Token</label>
+          <select class="input" id="offerToken"><option>USDC</option><option>ETH</option></select>
+        </div>
+        <div class="field">
+          <label for="offerNetwork">Network</label>
+          <select class="input" id="offerNetwork"><option>Base</option><option>Ethereum</option><option>Polygon</option></select>
+        </div>
+      </div>
+      <div class="hint">Mock only: this represents the payment request that would later be created through Privy.</div>
+      <div class="actions">
+        <button class="button" data-close="offerDialog" type="button">Cancel</button>
+        <button class="button button-primary" type="submit">Send payment offer</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="deliveryDialog">
+    <form class="modal" id="deliveryForm">
+      <div class="modal-head">
+        <div><div class="eyebrow">Deliver artwork</div><h2>Upload final image</h2></div>
+        <button class="close" data-close="deliveryDialog" type="button">×</button>
+      </div>
+
+      <div class="field">
+        <label for="deliveryImageInput">Artwork image</label>
+        <input id="deliveryImageInput" type="file" accept="image/*" required />
+        <img class="preview" id="deliveryPreview" alt="Delivery preview" />
+        <div class="hint">
+          For this mock, the image is compressed aggressively and stored in localStorage.
+          Only the latest delivered version is kept.
+        </div>
+        <div class="status" id="deliveryImageStatus"></div>
+      </div>
+
+      <div class="field">
+        <label for="deliveryMessage">Message to buyer</label>
+        <textarea id="deliveryMessage" placeholder="Here is the finished artwork. Thanks!"></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="button" data-close="deliveryDialog" type="button">Cancel</button>
+        <button class="button button-primary" type="submit">Send artwork</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="privyDialog">
+    <div class="modal">
+      <div class="modal-head">
+        <div><div class="eyebrow">Mock wallet payment</div><h2>Pay with Privy</h2></div>
+        <button class="close" data-close="privyDialog" type="button">×</button>
+      </div>
+      <div class="privy-card">
+        <div class="privy-brand">privy</div>
+        <div class="wallet-row"><span class="wallet-label">Connected wallet</span><span class="wallet-value">0x71A4…82F1</span></div>
+        <div class="wallet-row"><span class="wallet-label">Pay</span><span class="wallet-value" id="privyAmount"></span></div>
+        <div class="wallet-row"><span class="wallet-label">Network</span><span class="wallet-value" id="privyNetwork"></span></div>
+      </div>
+      <div class="hint">No real wallet is connected and no blockchain transaction will be sent.</div>
+      <div class="actions">
+        <button class="button" data-close="privyDialog" type="button">Cancel</button>
+        <button class="button button-primary" id="confirmPayment" type="button">Confirm payment</button>
+      </div>
+    </div>
+  </dialog>
+
   <script>
-    const CURRENT_USER_ID = "mira-vale";
-    const STORAGE_KEY = "commissionBoard.mock.userCommissions.v1";
+    const CURRENT_ARTIST_ID = "mira-vale";
+    const BUYER = { id: "alex", name: "Alex" };
+    const USER_COMMISSIONS_KEY = "commissionBoard.mock.userCommissions.v1";
+    const REQUESTS_KEY = "bluetits.mock.requests.v1";
+    const ROLE_KEY = "bluetits.mock.role.v1";
 
     const artists = [
       {
-        id: "mira-vale",
-        name: "Mira Vale",
+        id: "mira-vale", name: "Mira Vale",
         bio: "Soft portraits, atmospheric character pieces and quiet fantasy scenes.",
         cover: "https://picsum.photos/seed/mira-cover/900/700",
         commissions: [
-          {
-            id: "mira-sample-1",
-            title: "Painterly portrait",
-            description: "A polished portrait with a soft background and simple lighting.",
-            minPrice: 80,
-            maxPrice: 160,
-            image: "https://picsum.photos/seed/mira-painterly/1000/760"
-          },
-          {
-            id: "mira-sample-2",
-            title: "Character sketch",
-            description: "Loose monochrome or limited-color character exploration.",
-            minPrice: 35,
-            maxPrice: 70,
-            image: "https://picsum.photos/seed/mira-sketch/1000/760"
-          }
+          { id: "mira-sample-1", title: "Painterly portrait", description: "A polished portrait with a soft background and simple lighting.", minPrice: 80, maxPrice: 160, image: "https://picsum.photos/seed/mira-painterly/1000/760" },
+          { id: "mira-sample-2", title: "Character sketch", description: "Loose monochrome or limited-color character exploration.", minPrice: 35, maxPrice: 70, image: "https://picsum.photos/seed/mira-sketch/1000/760" }
         ]
       },
       {
-        id: "noah-ink",
-        name: "Noah Ink",
+        id: "noah-ink", name: "Noah Ink",
         bio: "Graphic ink work, expressive silhouettes and high-contrast character art.",
         cover: "https://picsum.photos/seed/noah-cover/900/700",
         commissions: [
-          {
-            id: "noah-1",
-            title: "Ink character",
-            description: "High-contrast character illustration with bold linework.",
-            minPrice: 55,
-            maxPrice: 110,
-            image: "https://picsum.photos/seed/noah-ink-1/1000/760"
-          },
-          {
-            id: "noah-2",
-            title: "Poster composition",
-            description: "Graphic poster-like composition for one or two characters.",
-            minPrice: 100,
-            maxPrice: 220,
-            image: "https://picsum.photos/seed/noah-poster/1000/760"
-          }
+          { id: "noah-1", title: "Ink character", description: "High-contrast character illustration with bold linework.", minPrice: 55, maxPrice: 110, image: "https://picsum.photos/seed/noah-ink-1/1000/760" },
+          { id: "noah-2", title: "Poster composition", description: "Graphic poster-like composition for one or two characters.", minPrice: 100, maxPrice: 220, image: "https://picsum.photos/seed/noah-poster/1000/760" }
         ]
       },
       {
-        id: "aya-kiro",
-        name: "Aya Kiro",
+        id: "aya-kiro", name: "Aya Kiro",
         bio: "Bright anime-inspired characters, fashion details and playful color palettes.",
         cover: "https://picsum.photos/seed/aya-cover/900/700",
         commissions: [
-          {
-            id: "aya-1",
-            title: "Full-body character",
-            description: "Full-body character artwork with a simple decorative background.",
-            minPrice: 120,
-            maxPrice: 240,
-            image: "https://picsum.photos/seed/aya-fullbody/1000/760"
-          },
-          {
-            id: "aya-2",
-            title: "Icon set",
-            description: "A set of expressive profile icons for social media or communities.",
-            minPrice: 45,
-            maxPrice: 90,
-            image: "https://picsum.photos/seed/aya-icons/1000/760"
-          }
+          { id: "aya-1", title: "Full-body character", description: "Full-body character artwork with a simple decorative background.", minPrice: 120, maxPrice: 240, image: "https://picsum.photos/seed/aya-fullbody/1000/760" },
+          { id: "aya-2", title: "Icon set", description: "A set of expressive profile icons for social media or communities.", minPrice: 45, maxPrice: 90, image: "https://picsum.photos/seed/aya-icons/1000/760" }
         ]
       },
       {
-        id: "leon-moss",
-        name: "Leon Moss",
+        id: "leon-moss", name: "Leon Moss",
         bio: "Creature concepts, woodland fantasy and slightly strange natural forms.",
         cover: "https://picsum.photos/seed/leon-cover/900/700",
         commissions: [
-          {
-            id: "leon-1",
-            title: "Creature concept",
-            description: "One creature concept with shape exploration and color pass.",
-            minPrice: 90,
-            maxPrice: 180,
-            image: "https://picsum.photos/seed/leon-creature/1000/760"
-          },
-          {
-            id: "leon-2",
-            title: "Fantasy environment",
-            description: "Small atmospheric environment painting with one focal subject.",
-            minPrice: 140,
-            maxPrice: 300,
-            image: "https://picsum.photos/seed/leon-environment/1000/760"
-          }
-        ]
-      },
-      {
-        id: "sora-finch",
-        name: "Sora Finch",
-        bio: "Clean stylized portraits, editorial color and minimal compositions.",
-        cover: "https://picsum.photos/seed/sora-cover/900/700",
-        commissions: [
-          {
-            id: "sora-1",
-            title: "Editorial portrait",
-            description: "Stylized portrait with simple shapes and a curated palette.",
-            minPrice: 70,
-            maxPrice: 150,
-            image: "https://picsum.photos/seed/sora-editorial/1000/760"
-          },
-          {
-            id: "sora-2",
-            title: "Couple portrait",
-            description: "Two-character portrait with a clean, minimal backdrop.",
-            minPrice: 130,
-            maxPrice: 250,
-            image: "https://picsum.photos/seed/sora-couple/1000/760"
-          }
+          { id: "leon-1", title: "Creature concept", description: "One creature concept with shape exploration and color pass.", minPrice: 90, maxPrice: 180, image: "https://picsum.photos/seed/leon-creature/1000/760" },
+          { id: "leon-2", title: "Fantasy environment", description: "Small atmospheric environment painting with one focal subject.", minPrice: 140, maxPrice: 300, image: "https://picsum.photos/seed/leon-environment/1000/760" }
         ]
       }
     ];
 
-    const homeView = document.getElementById("homeView");
-    const profileView = document.getElementById("profileView");
-    const artistGrid = document.getElementById("artistGrid");
-    const commissionGrid = document.getElementById("commissionGrid");
-    const addCard = document.getElementById("addCard");
-    const profileName = document.getElementById("profileName");
-    const profileBio = document.getElementById("profileBio");
-    const ownerPill = document.getElementById("ownerPill");
-    const storageNote = document.getElementById("storageNote");
+    const $ = id => document.getElementById(id);
+    const homeView = $("homeView");
+    const profileView = $("profileView");
+    const artistGrid = $("artistGrid");
+    const commissionGrid = $("commissionGrid");
+    const addCard = $("addCard");
+    const requestList = $("requestList");
+    const tabs = $("tabs");
+    const commissionsTab = $("commissionsTab");
+    const requestsTab = $("requestsTab");
+    const commissionsPanel = $("commissionsPanel");
+    const requestsPanel = $("requestsPanel");
+    const roleSelect = $("roleSelect");
 
-    const dialog = document.getElementById("commissionDialog");
-    const form = document.getElementById("commissionForm");
-    const imageInput = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
-    const imageStatus = document.getElementById("imageStatus");
-
+    let role = localStorage.getItem(ROLE_KEY) || "buyer";
     let activeArtistId = null;
+    let activeTab = "commissions";
     let compressedImage = "";
+    let pendingCommissionRequest = null;
+    let pendingOfferRequestId = null;
+    let pendingPaymentRequestId = null;
+    let pendingDeliveryRequestId = null;
+    let compressedDeliveryImage = "";
 
-    document.getElementById("signedInName").textContent =
-      artists.find(a => a.id === CURRENT_USER_ID)?.name || "Current user";
+    roleSelect.value = role;
+
+    function safeParse(raw, fallback) {
+      try { const parsed = JSON.parse(raw); return parsed ?? fallback; } catch (_) { return fallback; }
+    }
 
     function readLocalCards() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (_) {
-        return [];
-      }
+      const parsed = safeParse(localStorage.getItem(USER_COMMISSIONS_KEY), []);
+      return Array.isArray(parsed) ? parsed : [];
     }
 
     function writeLocalCards(cards) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-        return true;
-      } catch (error) {
-        console.error(error);
-        alert("Could not save this image. Browser localStorage is probably full.");
-        return false;
-      }
+      try { localStorage.setItem(USER_COMMISSIONS_KEY, JSON.stringify(cards)); return true; }
+      catch (error) { console.error(error); alert("Could not save. Browser localStorage is probably full."); return false; }
     }
 
-    function estimateStorageKB() {
-      const raw = localStorage.getItem(STORAGE_KEY) || "";
-      return Math.round(new Blob([raw]).size / 1024);
+    function readRequests() {
+      const parsed = safeParse(localStorage.getItem(REQUESTS_KEY), []);
+      return Array.isArray(parsed) ? parsed : [];
     }
 
-    function getArtist(id) {
-      return artists.find(a => a.id === id) || artists[0];
+    function writeRequests(requests) {
+      try { localStorage.setItem(REQUESTS_KEY, JSON.stringify(requests)); return true; }
+      catch (error) { console.error(error); alert("Could not save the request to localStorage."); return false; }
     }
+
+    function getArtist(id) { return artists.find(a => a.id === id) || artists[0]; }
 
     function getArtistCards(artist) {
-      if (artist.id !== CURRENT_USER_ID) return artist.commissions;
-      return [...artist.commissions, ...readLocalCards()];
+      if (artist.id !== CURRENT_ARTIST_ID) return artist.commissions;
+      return [...artist.commissions, ...readLocalCards().map(c => ({ ...c, local: true }))];
+    }
+
+    function getCommission(artistId, commissionId) {
+      return getArtistCards(getArtist(artistId)).find(c => c.id === commissionId);
+    }
+
+    function latestBuyerRequest(artistId, commissionId) {
+      return readRequests().filter(r => r.artistId === artistId && r.commissionId === commissionId && r.buyerId === BUYER.id)
+        .sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] || null;
+    }
+
+    function statusLabel(status) {
+      return ({ requested: "Waiting for artist", offered: "Offer ready", paid: "Paid", delivered: "Artwork delivered", declined: "Declined" })[status] || status;
+    }
+
+    function statusClass(status) {
+      return ({ requested: "status-requested", offered: "status-offered", paid: "status-paid", delivered: "status-delivered", declined: "status-declined" })[status] || "status-requested";
+    }
+
+    function setTab(name) {
+      activeTab = name;
+      commissionsTab.classList.toggle("active", name === "commissions");
+      requestsTab.classList.toggle("active", name === "requests");
+      commissionsPanel.classList.toggle("active", name === "commissions");
+      requestsPanel.classList.toggle("active", name === "requests");
     }
 
     function renderArtists() {
       artistGrid.innerHTML = "";
-
       artists.forEach(artist => {
+        const count = getArtistCards(artist).length;
         const card = document.createElement("button");
         card.type = "button";
         card.className = "artist-card";
         card.innerHTML = `
           <div class="artist-cover">
             <img src="${artist.cover}" alt="">
-            ${artist.id === CURRENT_USER_ID ? '<div class="you-badge">You</div>' : ""}
+            ${artist.id === CURRENT_ARTIST_ID ? '<div class="you-badge">Mira</div>' : ''}
           </div>
           <div class="artist-info">
             <div class="artist-name"></div>
-            <div class="artist-meta"></div>
-          </div>
-        `;
-
+            <div class="artist-meta">${count} commission ${count === 1 ? 'type' : 'types'}</div>
+          </div>`;
         card.querySelector(".artist-name").textContent = artist.name;
-        card.querySelector(".artist-meta").textContent =
-          `${getArtistCards(artist).length} commission ${getArtistCards(artist).length === 1 ? "type" : "types"}`;
-
         card.addEventListener("click", () => openProfile(artist.id));
         artistGrid.appendChild(card);
       });
@@ -842,126 +955,405 @@
 
     function renderProfile() {
       const artist = getArtist(activeArtistId);
-      const isOwner = artist.id === CURRENT_USER_ID;
-      const cards = getArtistCards(artist);
+      const ownArtistProfile = role === "artist" && artist.id === CURRENT_ARTIST_ID;
+      const buyerView = role === "buyer";
+      $("profileName").textContent = artist.name;
+      $("profileBio").textContent = artist.bio;
 
-      profileName.textContent = artist.name;
-      profileBio.textContent = artist.bio;
-      ownerPill.classList.toggle("visible", isOwner);
-      addCard.classList.toggle("visible", isOwner);
+      const pill = $("identityPill");
+      if (ownArtistProfile) {
+        pill.textContent = "Your artist profile · editable";
+        pill.classList.add("visible");
+      } else if (buyerView) {
+        pill.textContent = "Viewing as buyer";
+        pill.classList.add("visible");
+      } else {
+        pill.classList.remove("visible");
+      }
 
+      const relatedBuyerRequests = readRequests().filter(r => r.artistId === artist.id && r.buyerId === BUYER.id);
+      const artistRequests = readRequests().filter(r => r.artistId === CURRENT_ARTIST_ID);
+      const shouldShowTabs = ownArtistProfile || (buyerView && relatedBuyerRequests.length > 0);
+      tabs.classList.toggle("visible", shouldShowTabs);
+
+      if (ownArtistProfile) {
+        requestsTab.textContent = `Requests (${artistRequests.length})`;
+      } else if (buyerView && relatedBuyerRequests.length > 0) {
+        requestsTab.textContent = `My requests (${relatedBuyerRequests.length})`;
+      }
+
+      if (!shouldShowTabs) setTab("commissions");
+
+      addCard.classList.toggle("visible", ownArtistProfile);
       commissionGrid.querySelectorAll(".commission-card").forEach(el => el.remove());
 
-      cards.forEach(item => {
-        const isLocal = Boolean(item.local);
+      getArtistCards(artist).forEach(item => {
+        const local = Boolean(item.local);
+        const prior = buyerView ? latestBuyerRequest(artist.id, item.id) : null;
+        const hasOpenRequest = prior && ["requested", "offered", "paid", "delivered"].includes(prior.status);
+
         const card = document.createElement("article");
-        card.className = `commission-card${isLocal ? " local-card" : ""}`;
+        card.className = `commission-card${local && ownArtistProfile ? ' local-card' : ''}`;
         card.innerHTML = `
-          <button class="delete-card" type="button" aria-label="Delete commission" title="Delete">×</button>
+          <button class="delete-card" type="button" title="Delete">×</button>
           <img alt="">
           <div class="card-body">
             <h3 class="card-title"></h3>
             <p class="card-description"></p>
-            <div class="price"></div>
-          </div>
-        `;
-
+            <div class="card-footer">
+              <div class="price">$${item.minPrice}–$${item.maxPrice}</div>
+              <div class="card-action"></div>
+            </div>
+          </div>`;
         card.querySelector("img").src = item.image;
         card.querySelector(".card-title").textContent = item.title;
-        card.querySelector(".card-description").textContent =
-          item.description || "No description added.";
-        card.querySelector(".price").textContent = `$${item.minPrice}–$${item.maxPrice}`;
+        card.querySelector(".card-description").textContent = item.description || "No description added.";
 
-        if (isLocal) {
+        if (local && ownArtistProfile) {
           card.querySelector(".delete-card").addEventListener("click", () => {
-            const next = readLocalCards().filter(c => c.id !== item.id);
-            writeLocalCards(next);
-            renderProfile();
-            renderArtists();
+            if (!confirm("Delete this local commission card?")) return;
+            writeLocalCards(readLocalCards().filter(c => c.id !== item.id));
+            renderProfile(); renderArtists();
           });
+        }
+
+        const action = card.querySelector(".card-action");
+        if (buyerView) {
+          const button = document.createElement("button");
+          button.className = hasOpenRequest ? "small-button" : "small-button primary";
+          button.type = "button";
+          button.textContent = hasOpenRequest ? statusLabel(prior.status) : "Request commission";
+          button.disabled = Boolean(hasOpenRequest);
+          if (!hasOpenRequest) button.addEventListener("click", () => openRequestDialog(artist, item));
+          action.appendChild(button);
         }
 
         commissionGrid.insertBefore(card, addCard);
       });
 
-      if (isOwner) {
-        const kb = estimateStorageKB();
-        storageNote.textContent =
-          `Your added commissions are saved locally in this browser. Current mock storage: ~${kb} KB.`;
-      } else {
-        storageNote.textContent = "This profile is read-only in the mock.";
-      }
+      renderRequestsPanel();
+      const localKB = Math.round(new Blob([localStorage.getItem(USER_COMMISSIONS_KEY) || ""]).size / 1024);
+      $("storageNote").textContent = ownArtistProfile
+        ? `Your uploaded commission cards are stored locally in this browser (~${localKB} KB). Requests and mock transaction state are also stored in localStorage.`
+        : "This is a local front-end mock. No real requests, wallets or blockchain transactions are sent.";
     }
 
-    function showHome(updateHash = true) {
+    function renderRequestsPanel() {
+      const artist = getArtist(activeArtistId);
+      let requests = [];
+      if (role === "artist" && artist.id === CURRENT_ARTIST_ID) {
+        requests = readRequests().filter(r => r.artistId === CURRENT_ARTIST_ID).sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      } else if (role === "buyer") {
+        requests = readRequests().filter(r => r.artistId === artist.id && r.buyerId === BUYER.id).sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      }
+
+      requestList.innerHTML = "";
+      if (!requests.length) {
+        requestList.innerHTML = '<div class="empty-state">No requests here yet.</div>';
+        return;
+      }
+
+      requests.forEach(req => {
+        const commission = getCommission(req.artistId, req.commissionId) || { title: "Commission" };
+        const artistObj = getArtist(req.artistId);
+        const card = document.createElement("article");
+        card.className = "request-card";
+        card.innerHTML = `
+          <div class="request-head">
+            <div>
+              <div class="request-title"></div>
+              <div class="request-subtitle"></div>
+            </div>
+            <span class="status-pill ${statusClass(req.status)}">${statusLabel(req.status)}</span>
+          </div>
+          <div class="request-message"></div>
+          <div class="offer-slot"></div>
+          <div class="request-actions"></div>`;
+
+        card.querySelector(".request-title").textContent = commission.title;
+        card.querySelector(".request-subtitle").textContent = role === "artist" ? `from ${req.buyerName}` : `to ${artistObj.name}`;
+        card.querySelector(".request-message").textContent = req.message;
+
+        const offerSlot = card.querySelector(".offer-slot");
+        if (req.offer) {
+          offerSlot.innerHTML = `
+            <div class="offer-box">
+              <div><div class="offer-amount">$${req.offer.amount} ${req.offer.token}</div><div class="offer-meta">${req.offer.network} · payment offer</div></div>
+              <div class="offer-action"></div>
+            </div>`;
+        }
+
+        const actions = card.querySelector(".request-actions");
+
+        if (role === "artist" && req.status === "requested") {
+          const decline = document.createElement("button");
+          decline.className = "small-button danger";
+          decline.textContent = "Decline";
+          decline.type = "button";
+          decline.addEventListener("click", () => declineRequest(req.id));
+
+          const accept = document.createElement("button");
+          accept.className = "small-button primary";
+          accept.textContent = "Accept & create offer";
+          accept.type = "button";
+          accept.addEventListener("click", () => openOfferDialog(req));
+          actions.append(decline, accept);
+        }
+
+        if (role === "buyer" && req.status === "offered") {
+          const pay = document.createElement("button");
+          pay.className = "small-button primary";
+          pay.type = "button";
+          pay.textContent = "Pay with Privy";
+          pay.addEventListener("click", () => openPrivyDialog(req));
+          const slot = card.querySelector(".offer-action");
+          if (slot) slot.appendChild(pay);
+        }
+
+        if (req.payment) {
+          const info = document.createElement("div");
+          info.className = "hint";
+          info.style.marginTop = "12px";
+          info.textContent = `Mock transaction ${req.payment.txHash} · paid ${new Date(req.payment.paidAt).toLocaleString()}`;
+          card.appendChild(info);
+        }
+
+        if (role === "artist" && req.status === "paid") {
+          const deliver = document.createElement("button");
+          deliver.className = "small-button primary";
+          deliver.type = "button";
+          deliver.textContent = "Upload delivery";
+          deliver.addEventListener("click", () => openDeliveryDialog(req));
+          actions.appendChild(deliver);
+        }
+
+        if (req.delivery && req.delivery.image) {
+          const delivery = document.createElement("div");
+          delivery.className = "delivery-box";
+          delivery.innerHTML = `
+            <img alt="Delivered artwork">
+            <div class="delivery-copy"></div>
+          `;
+          delivery.querySelector("img").src = req.delivery.image;
+          delivery.querySelector(".delivery-copy").textContent =
+            (req.delivery.message || "Artwork delivered.") +
+            ` · ${new Date(req.delivery.deliveredAt).toLocaleString()}`;
+          card.appendChild(delivery);
+        }
+
+        requestList.appendChild(card);
+      });
+    }
+
+    function showHome() {
       activeArtistId = null;
       homeView.classList.add("active");
       profileView.classList.remove("active");
-      if (updateHash) history.replaceState(null, "", location.pathname + location.search + "#home");
+      history.replaceState(null, "", location.pathname + location.search + "#home");
       renderArtists();
       window.scrollTo({ top: 0, behavior: "instant" });
     }
 
-    function openProfile(id, updateHash = true) {
+    function openProfile(id) {
       activeArtistId = id;
+      activeTab = "commissions";
       homeView.classList.remove("active");
       profileView.classList.add("active");
-      if (updateHash) history.replaceState(null, "", location.pathname + location.search + `#artist=${encodeURIComponent(id)}`);
+      history.replaceState(null, "", location.pathname + location.search + `#artist=${encodeURIComponent(id)}`);
+      setTab("commissions");
       renderProfile();
       window.scrollTo({ top: 0, behavior: "instant" });
     }
 
-    function routeFromHash() {
-      const match = location.hash.match(/^#artist=(.+)$/);
-      if (match) {
-        openProfile(decodeURIComponent(match[1]), false);
-      } else {
-        showHome(false);
-      }
-    }
+    $("brandButton").addEventListener("click", showHome);
+    $("backButton").addEventListener("click", showHome);
+    commissionsTab.addEventListener("click", () => setTab("commissions"));
+    requestsTab.addEventListener("click", () => { renderRequestsPanel(); setTab("requests"); });
 
-    document.getElementById("brandButton").addEventListener("click", () => showHome());
-    document.getElementById("backButton").addEventListener("click", () => showHome());
-    window.addEventListener("hashchange", routeFromHash);
-
-    addCard.addEventListener("click", () => {
-      if (activeArtistId === CURRENT_USER_ID) dialog.showModal();
+    roleSelect.addEventListener("change", () => {
+      role = roleSelect.value;
+      localStorage.setItem(ROLE_KEY, role);
+      if (activeArtistId) {
+        setTab("commissions");
+        renderProfile();
+      } else renderArtists();
     });
 
-    function resetFormAndClose() {
-      dialog.close();
-      form.reset();
-      preview.src = "";
-      preview.style.display = "none";
-      imageStatus.textContent = "";
-      compressedImage = "";
+    document.querySelectorAll("[data-close]").forEach(button => {
+      button.addEventListener("click", () => $(button.dataset.close).close());
+    });
+
+    // Add commission flow
+    const commissionDialog = $("commissionDialog");
+    const commissionForm = $("commissionForm");
+    const imageInput = $("imageInput");
+    const preview = $("preview");
+    const imageStatus = $("imageStatus");
+
+    addCard.addEventListener("click", () => {
+      if (role === "artist" && activeArtistId === CURRENT_ARTIST_ID) commissionDialog.showModal();
+    });
+
+    function resetCommissionForm() {
+      commissionForm.reset(); compressedImage = ""; preview.src = ""; preview.style.display = "none"; imageStatus.textContent = "";
     }
 
-    document.getElementById("closeDialog").addEventListener("click", resetFormAndClose);
-    document.getElementById("cancelButton").addEventListener("click", resetFormAndClose);
+    commissionDialog.addEventListener("close", resetCommissionForm);
 
     function fileToImage(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = reader.result;
+          const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = reader.result;
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        reader.onerror = reject; reader.readAsDataURL(file);
       });
     }
 
     async function compressForLocalStorage(file) {
       const img = await fileToImage(file);
-
-      let maxSide = 720;
-      let quality = 0.54;
+      let maxSide = 720, quality = .54;
       const targetBytes = 170 * 1024;
-
       for (let attempt = 0; attempt < 6; attempt++) {
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d", { alpha: false });
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, height); ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const approxBytes = Math.ceil((dataUrl.length - "data:image/jpeg;base64,".length) * .75);
+        if (approxBytes <= targetBytes || attempt === 5) return { dataUrl, width, height, approxBytes };
+        maxSide = Math.round(maxSide * .82); quality = Math.max(.34, quality - .055);
+      }
+    }
+
+    imageInput.addEventListener("change", async () => {
+      const file = imageInput.files?.[0]; if (!file) return;
+      compressedImage = ""; imageStatus.textContent = "Compressing image…";
+      try {
+        const result = await compressForLocalStorage(file);
+        compressedImage = result.dataUrl; preview.src = result.dataUrl; preview.style.display = "block";
+        imageStatus.textContent = `Compressed to ${result.width}×${result.height}, ~${Math.round(result.approxBytes / 1024)} KB.`;
+      } catch (error) { console.error(error); imageStatus.textContent = "Could not process this image."; }
+    });
+
+    commissionForm.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!compressedImage) return alert("Please choose an image first.");
+      const minPrice = Number($("minPrice").value), maxPrice = Number($("maxPrice").value);
+      if (maxPrice < minPrice) return alert("Maximum price must be at least the minimum price.");
+      const card = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        title: $("titleInput").value.trim(), description: $("descriptionInput").value.trim(),
+        minPrice, maxPrice, image: compressedImage, createdAt: new Date().toISOString()
+      };
+      if (writeLocalCards([...readLocalCards(), card])) { commissionDialog.close(); renderProfile(); renderArtists(); }
+    });
+
+    // Buyer request flow
+    const requestDialog = $("requestDialog");
+    const requestForm = $("requestForm");
+
+    function openRequestDialog(artist, commission) {
+      pendingCommissionRequest = { artist, commission };
+      $("requestCommissionSummary").innerHTML = `
+        <div style="font-weight:720">${commission.title}</div>
+        <div class="hint" style="margin-top:5px">${artist.name} · $${commission.minPrice}–$${commission.maxPrice}</div>`;
+      $("requestMessage").value = "";
+      requestDialog.showModal();
+    }
+
+    requestDialog.addEventListener("close", () => { pendingCommissionRequest = null; requestForm.reset(); });
+
+    requestForm.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!pendingCommissionRequest) return;
+      const req = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `req-${Date.now()}`,
+        artistId: pendingCommissionRequest.artist.id,
+        buyerId: BUYER.id,
+        buyerName: BUYER.name,
+        commissionId: pendingCommissionRequest.commission.id,
+        message: $("requestMessage").value.trim(),
+        status: "requested",
+        offer: null,
+        payment: null,
+        createdAt: new Date().toISOString()
+      };
+      if (writeRequests([...readRequests(), req])) {
+        requestDialog.close();
+        renderProfile();
+        if ($("tabs").classList.contains("visible")) { renderRequestsPanel(); setTab("requests"); }
+      }
+    });
+
+    function declineRequest(id) {
+      if (!confirm("Decline this request? This ends the mock transaction.")) return;
+      const next = readRequests().map(r => r.id === id ? { ...r, status: "declined", resolvedAt: new Date().toISOString() } : r);
+      writeRequests(next); renderProfile(); setTab("requests");
+    }
+
+    // Artist offer flow
+    const offerDialog = $("offerDialog");
+    const offerForm = $("offerForm");
+
+    function openOfferDialog(req) {
+      pendingOfferRequestId = req.id;
+      const c = getCommission(req.artistId, req.commissionId);
+      $("offerAmount").value = c ? Math.round((Number(c.minPrice) + Number(c.maxPrice)) / 2) : 100;
+      $("offerToken").value = "USDC";
+      $("offerNetwork").value = "Base";
+      offerDialog.showModal();
+    }
+
+    offerDialog.addEventListener("close", () => { pendingOfferRequestId = null; offerForm.reset(); });
+
+    offerForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const id = pendingOfferRequestId; if (!id) return;
+      const offer = { amount: Number($("offerAmount").value), token: $("offerToken").value, network: $("offerNetwork").value, sentAt: new Date().toISOString() };
+      const next = readRequests().map(r => r.id === id ? { ...r, status: "offered", offer } : r);
+      if (writeRequests(next)) { offerDialog.close(); renderProfile(); setTab("requests"); }
+    });
+
+
+    // Artist delivery flow
+    const deliveryDialog = $("deliveryDialog");
+    const deliveryForm = $("deliveryForm");
+    const deliveryImageInput = $("deliveryImageInput");
+    const deliveryPreview = $("deliveryPreview");
+    const deliveryImageStatus = $("deliveryImageStatus");
+
+    function openDeliveryDialog(req) {
+      pendingDeliveryRequestId = req.id;
+      compressedDeliveryImage = "";
+      deliveryForm.reset();
+      deliveryPreview.src = "";
+      deliveryPreview.style.display = "none";
+      deliveryImageStatus.textContent = "";
+      deliveryDialog.showModal();
+    }
+
+    deliveryDialog.addEventListener("close", () => {
+      pendingDeliveryRequestId = null;
+      compressedDeliveryImage = "";
+      deliveryForm.reset();
+      deliveryPreview.src = "";
+      deliveryPreview.style.display = "none";
+      deliveryImageStatus.textContent = "";
+    });
+
+    async function compressDeliveryForLocalStorage(file) {
+      const img = await fileToImage(file);
+
+      // Deliveries can be somewhat larger than commission thumbnails,
+      // but still small enough for repeated localStorage use in this mock.
+      let maxSide = 960;
+      let quality = .58;
+      const targetBytes = 220 * 1024;
+
+      for (let attempt = 0; attempt < 7; attempt++) {
         const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
         const width = Math.max(1, Math.round(img.naturalWidth * scale));
         const height = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -971,79 +1363,93 @@
         canvas.height = height;
 
         const ctx = canvas.getContext("2d", { alpha: false });
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        const approxBytes = Math.ceil((dataUrl.length - "data:image/jpeg;base64,".length) * 0.75);
+        const approxBytes = Math.ceil((dataUrl.length - "data:image/jpeg;base64,".length) * .75);
 
-        if (approxBytes <= targetBytes || attempt === 5) {
+        if (approxBytes <= targetBytes || attempt === 6) {
           return { dataUrl, width, height, approxBytes };
         }
 
-        maxSide = Math.round(maxSide * 0.82);
-        quality = Math.max(0.34, quality - 0.055);
+        maxSide = Math.round(maxSide * .84);
+        quality = Math.max(.32, quality - .05);
       }
     }
 
-    imageInput.addEventListener("change", async () => {
-      const file = imageInput.files?.[0];
+    deliveryImageInput.addEventListener("change", async () => {
+      const file = deliveryImageInput.files?.[0];
       if (!file) return;
 
-      compressedImage = "";
-      imageStatus.textContent = "Compressing image…";
+      compressedDeliveryImage = "";
+      deliveryImageStatus.textContent = "Compressing delivery image…";
 
       try {
-        const result = await compressForLocalStorage(file);
-        compressedImage = result.dataUrl;
-        preview.src = result.dataUrl;
-        preview.style.display = "block";
-        imageStatus.textContent =
-          `Saved preview: ${result.width}×${result.height}, ~${Math.round(result.approxBytes / 1024)} KB.`;
+        const result = await compressDeliveryForLocalStorage(file);
+        compressedDeliveryImage = result.dataUrl;
+        deliveryPreview.src = result.dataUrl;
+        deliveryPreview.style.display = "block";
+        deliveryImageStatus.textContent =
+          `Compressed to ${result.width}×${result.height}, ~${Math.round(result.approxBytes / 1024)} KB.`;
       } catch (error) {
         console.error(error);
-        imageStatus.textContent = "Could not process this image.";
+        deliveryImageStatus.textContent = "Could not process this image.";
       }
     });
 
-    form.addEventListener("submit", (event) => {
+    deliveryForm.addEventListener("submit", event => {
       event.preventDefault();
 
-      if (activeArtistId !== CURRENT_USER_ID) return;
+      if (!pendingDeliveryRequestId) return;
+      if (!compressedDeliveryImage) return alert("Please choose an artwork image first.");
 
-      if (!compressedImage) {
-        alert("Please choose an image first.");
-        return;
-      }
-
-      const minPrice = Number(document.getElementById("minPrice").value);
-      const maxPrice = Number(document.getElementById("maxPrice").value);
-
-      if (maxPrice < minPrice) {
-        alert("Maximum price must be greater than or equal to minimum price.");
-        return;
-      }
-
-      const newCard = {
-        id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`),
-        title: document.getElementById("titleInput").value.trim(),
-        description: document.getElementById("descriptionInput").value.trim(),
-        minPrice,
-        maxPrice,
-        image: compressedImage,
-        local: true,
-        createdAt: new Date().toISOString()
+      const id = pendingDeliveryRequestId;
+      const delivery = {
+        image: compressedDeliveryImage,
+        message: $("deliveryMessage").value.trim(),
+        deliveredAt: new Date().toISOString()
       };
 
-      const next = [...readLocalCards(), newCard];
+      // Replaces any previous delivery image instead of accumulating versions.
+      const next = readRequests().map(r =>
+        r.id === id
+          ? { ...r, status: "delivered", delivery }
+          : r
+      );
 
-      if (writeLocalCards(next)) {
-        resetFormAndClose();
+      if (writeRequests(next)) {
+        deliveryDialog.close();
         renderProfile();
-        renderArtists();
+        setTab("requests");
       }
     });
+
+    // Mock Privy payment
+    const privyDialog = $("privyDialog");
+
+    function openPrivyDialog(req) {
+      pendingPaymentRequestId = req.id;
+      $("privyAmount").textContent = `$${req.offer.amount} ${req.offer.token}`;
+      $("privyNetwork").textContent = req.offer.network;
+      privyDialog.showModal();
+    }
+
+    privyDialog.addEventListener("close", () => { pendingPaymentRequestId = null; });
+
+    $("confirmPayment").addEventListener("click", () => {
+      const id = pendingPaymentRequestId; if (!id) return;
+      const txHash = "0x" + Math.random().toString(16).slice(2,10).toUpperCase() + "…" + Math.random().toString(16).slice(2,6).toUpperCase();
+      const payment = { wallet: "0x71A4…82F1", txHash, paidAt: new Date().toISOString() };
+      const next = readRequests().map(r => r.id === id ? { ...r, status: "paid", payment } : r);
+      if (writeRequests(next)) { privyDialog.close(); renderProfile(); setTab("requests"); }
+    });
+
+    function routeFromHash() {
+      const match = location.hash.match(/^#artist=(.+)$/);
+      if (match) openProfile(decodeURIComponent(match[1])); else showHome();
+    }
 
     renderArtists();
     routeFromHash();
