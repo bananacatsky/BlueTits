@@ -410,6 +410,24 @@
       gap: 22px;
     }
 
+    .profile-identity {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .profile-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      object-fit: cover;
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .profile-avatar.visible { display: block; }
+
     .profile-title-row h1 {
       font-size: clamp(32px, 5.5vw, 64px);
       word-break: break-all;
@@ -852,7 +870,7 @@
       <header class="profile-header">
         <div class="eyebrow">Artist profile</div>
         <div class="profile-title-row">
-          <div><h1 id="profileName"></h1><div class="wallet-address" id="profileWallet"></div></div>
+          <div class="profile-identity"><img class="profile-avatar" id="profileAvatar" alt=""><div><h1 id="profileName"></h1><div class="wallet-address" id="profileWallet"></div></div></div>
           <div class="identity-pill" id="identityPill"></div>
         </div>
         <p class="lead" id="profileBio"></p>
@@ -904,6 +922,27 @@
       </div>
       <div class="status" id="authStatus"></div>
     </div>
+  </dialog>
+
+  <dialog id="profileSetupDialog">
+    <form class="modal" id="profileSetupForm">
+      <div class="modal-head">
+        <div><div class="eyebrow">Your public profile</div><h2>Choose your username</h2></div>
+      </div>
+      <div class="notice">Your email stays private. Other users will see your username and wallet address.</div>
+      <div class="field">
+        <label for="profileUsername">Username</label>
+        <input id="profileUsername" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_-]+" autocomplete="username" placeholder="your_name">
+        <div class="hint">3–24 characters: letters, numbers, underscore or hyphen.</div>
+      </div>
+      <div class="field">
+        <label for="profileAvatarInput">Avatar (optional)</label>
+        <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp">
+        <img class="preview" id="profileAvatarPreview">
+        <div class="status" id="profileSetupStatus"></div>
+      </div>
+      <div class="actions"><button class="button primary" type="submit">Save profile</button></div>
+    </form>
   </dialog>
 
   <dialog id="commissionDialog">
@@ -1028,6 +1067,7 @@
     let privyWallet = null;
     let privyProvider = null;
     let privyEmail = null;
+    let currentProfile = null;
     let privyIframe = null;
     let proxyReadyPromise = null;
     let onrampRoot = null;
@@ -1035,6 +1075,7 @@
     let activeNetworkKey = localStorage.getItem("bluetits-network") || "arc_testnet";
 
     let activeProfileWallet = null;
+    let activeProfileUsername = null;
     let activeProfile = null;
     let requests = [];
 
@@ -1046,6 +1087,8 @@
 
     let compressedCommissionImage = "";
     let compressedDeliveryImage = "";
+    let compressedProfileAvatar = "";
+    let profileSetupResolver = null;
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -1173,8 +1216,10 @@
         card.className = "artist-card";
         card.type = "button";
 
-        const cover = user.cover_url
-          ? `<img src="${user.cover_url}" alt="">`
+        const cover = user.avatar_url
+          ? `<img src="${user.avatar_url}" alt="">`
+          : user.cover_url
+            ? `<img src="${user.cover_url}" alt="">`
           : `<div class="placeholder">BT</div>`;
 
         card.innerHTML = `
@@ -1186,20 +1231,21 @@
           </div>
         `;
 
-        card.querySelector(".artist-name").textContent = user.email || user.wallet;
-        card.querySelector(".wallet-address").textContent = user.email ? user.wallet : "Email will appear after their next login.";
-        card.addEventListener("click", () => openProfile(user.wallet));
+        card.querySelector(".artist-name").textContent = `@${user.username}`;
+        card.querySelector(".wallet-address").textContent = shortAddress(user.wallet);
+        card.addEventListener("click", () => openProfile(user.username));
         grid.appendChild(card);
       }
     }
 
-    async function openProfile(wallet) {
-      const data = await api(`/api/users/${wallet}`);
+    async function openProfile(username) {
+      const data = await api(`/api/profiles/${encodeURIComponent(username)}`);
       activeProfileWallet = data.user.wallet;
+      activeProfileUsername = data.user.username;
       activeProfile = data;
       $("homeView").classList.remove("active");
       $("profileView").classList.add("active");
-      history.replaceState(null, "", `#profile=${encodeURIComponent(wallet)}`);
+      history.replaceState(null, "", `/@${encodeURIComponent(data.user.username)}`);
       await refreshRequests();
       renderProfile();
       setTab("commissions");
@@ -1209,10 +1255,10 @@
     function renderProfile() {
       if (!activeProfile) return;
 
-      $("profileName").textContent = activeProfile.user.email || activeProfile.user.wallet;
-      $("profileWallet").textContent = activeProfile.user.email
-        ? activeProfile.user.wallet
-        : "Email will appear after this user logs in again.";
+      $("profileName").textContent = `@${activeProfile.user.username}`;
+      $("profileWallet").textContent = shortAddress(activeProfile.user.wallet);
+      $("profileAvatar").classList.toggle("visible", Boolean(activeProfile.user.avatar_url));
+      if (activeProfile.user.avatar_url) $("profileAvatar").src = activeProfile.user.avatar_url;
       $("profileBio").textContent =
         ownProfile()
           ? "This is your Privy-backed artist profile. Add commission options below."
@@ -1231,13 +1277,7 @@
         normalize(r.buyer_wallet) === normalize(activeProfileWallet)
       );
 
-      const showTabs = ownProfile() || (
-        loggedIn() &&
-        requests.some(r =>
-          normalize(r.artist_wallet) === normalize(activeProfileWallet) &&
-          normalize(r.buyer_wallet) === normalize(privyWallet.address)
-        )
-      );
+      const showTabs = ownProfile();
 
       $("tabs").classList.toggle("visible", showTabs);
 
@@ -1247,12 +1287,6 @@
           normalize(r.buyer_wallet) === normalize(privyWallet.address)
         );
         $("requestsTab").textContent = `Requests (${ownRequests.length})`;
-      } else {
-        const outgoing = loggedIn() ? requests.filter(r =>
-          normalize(r.artist_wallet) === normalize(activeProfileWallet) &&
-          normalize(r.buyer_wallet) === normalize(privyWallet.address)
-        ) : [];
-        $("requestsTab").textContent = `My requests (${outgoing.length})`;
       }
 
       const grid = $("commissionGrid");
@@ -1281,7 +1315,7 @@
             if (!confirm("Delete this commission option?")) return;
             try {
               await api(`/api/commissions/${item.id}`, {method: "DELETE"});
-              await openProfile(activeProfileWallet);
+              await openProfile(activeProfileUsername);
               await loadArtists();
             } catch (error) {
               alert(error.message);
@@ -1483,9 +1517,10 @@
     function showHome() {
       activeProfile = null;
       activeProfileWallet = null;
+      activeProfileUsername = null;
       $("profileView").classList.remove("active");
       $("homeView").classList.add("active");
-      history.replaceState(null, "", "#home");
+      history.replaceState(null, "", "/");
       loadArtists();
       scrollTo({top: 0, behavior: "instant"});
     }
@@ -1586,7 +1621,7 @@
 
       await switchNetwork(activeNetworkKey);
 
-      await api("/api/session", {
+      const sessionData = await api("/api/session", {
         method: "POST",
         body: JSON.stringify({
           wallet: wallet.address,
@@ -1594,14 +1629,19 @@
           email: privyEmail
         })
       });
+      currentProfile = sessionData.user;
 
       mountFiatOnrampIsland();
       updateAccount();
       await refreshRequests();
       await loadArtists();
 
+      if (!currentProfile.username) {
+        await openProfileSetup();
+      }
+
       if (activeProfileWallet) {
-        await openProfile(activeProfileWallet);
+        await openProfile(activeProfileUsername);
       }
     }
 
@@ -1671,7 +1711,9 @@
       $("accountChip").classList.toggle("connected", connected);
 
       if (connected) {
-        $("accountMain").textContent = privyEmail || shortAddress(privyWallet.address);
+        $("accountMain").textContent = currentProfile?.username
+          ? `@${currentProfile.username}`
+          : "Complete profile";
         $("accountSub").textContent = shortAddress(privyWallet.address);
         $("loginButton").style.display = "none";
       } else {
@@ -1691,6 +1733,71 @@
       pendingEmail = "";
       $("authDialog").showModal();
     }
+
+    function openProfileSetup() {
+      return new Promise(resolve => {
+        profileSetupResolver = resolve;
+        $("profileUsername").value = currentProfile?.username || "";
+        $("profileAvatarInput").value = "";
+        $("profileAvatarPreview").style.display = "none";
+        $("profileSetupStatus").textContent = "";
+        compressedProfileAvatar = "";
+        $("profileSetupDialog").showModal();
+      });
+    }
+
+    $("profileSetupDialog").addEventListener("cancel", event => {
+      event.preventDefault();
+    });
+
+    $("profileAvatarInput").addEventListener("change", async () => {
+      const file = $("profileAvatarInput").files?.[0];
+      if (!file) return;
+
+      $("profileSetupStatus").textContent = "Compressing…";
+      try {
+        const result = await compressImage(file, {
+          maxSide: 640,
+          quality: .72,
+          targetBytes: 240 * 1024
+        });
+        compressedProfileAvatar = result.dataUrl;
+        $("profileAvatarPreview").src = result.dataUrl;
+        $("profileAvatarPreview").style.display = "block";
+        $("profileSetupStatus").textContent =
+          `${result.width}×${result.height}, ~${Math.round(result.bytes / 1024)} KB`;
+      } catch (error) {
+        $("profileSetupStatus").textContent = error.message;
+      }
+    });
+
+    $("profileSetupForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = event.target.querySelector("button[type=submit]");
+      button.disabled = true;
+      $("profileSetupStatus").textContent = "Saving…";
+
+      try {
+        const result = await api("/api/profile", {
+          method: "POST",
+          body: JSON.stringify({
+            username: $("profileUsername").value.trim(),
+            avatar: compressedProfileAvatar || null
+          })
+        });
+        currentProfile = result.user;
+        $("profileSetupDialog").close();
+        updateAccount();
+        await loadArtists();
+        if (activeProfileWallet) await openProfile(currentProfile.username);
+        profileSetupResolver?.();
+        profileSetupResolver = null;
+      } catch (error) {
+        $("profileSetupStatus").textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     $("sendCodeButton").addEventListener("click", async () => {
       const email = $("authEmail").value.trim();
@@ -1753,6 +1860,7 @@
       privyWallet = null;
       privyProvider = null;
       privyEmail = null;
+      currentProfile = null;
       onrampController = null;
       if (onrampRoot) {
         onrampRoot.unmount();
@@ -1816,7 +1924,7 @@
     $("myProfileButton").addEventListener("click", event => {
       event.stopPropagation();
       $("accountPopover").classList.remove("visible");
-      openProfile(privyWallet.address);
+      if (currentProfile?.username) openProfile(currentProfile.username);
     });
 
     $("copyAddressButton").addEventListener("click", async event => {
@@ -1985,7 +2093,7 @@
         });
 
         $("commissionDialog").close();
-        await openProfile(privyWallet.address);
+        await openProfile(currentProfile.username);
         await loadArtists();
       } catch (error) {
         alert(error.message);
@@ -2253,7 +2361,7 @@
         await loadArtists();
         await initPrivy();
 
-        const match = location.hash.match(/^#profile=(0x[a-fA-F0-9]{40})$/);
+        const match = location.pathname.match(/^\/@([a-z0-9_-]+)$/i);
         if (match) await openProfile(match[1]);
       } catch (error) {
         console.error(error);

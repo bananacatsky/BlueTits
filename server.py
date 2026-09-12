@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import os
 import re
 import sqlite3
+import sys
 import urllib.request
 import uuid
 from datetime import datetime, timezone
@@ -74,12 +76,18 @@ TRANSFER_TOPIC = (
 )
 
 WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
+USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9_-]{1,22}[a-z0-9])?$")
 DATA_URL_RE = re.compile(
     r"^data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\s]+)$"
 )
 
 MAX_COMMISSION_IMAGE_BYTES = 500_000
 MAX_DELIVERY_IMAGE_BYTES = 700_000
+MAX_AVATAR_IMAGE_BYTES = 500_000
+RESERVED_USERNAMES = {
+    "admin", "api", "app", "assets", "login", "logout", "settings",
+    "static", "users", "profile", "profiles",
+}
 
 app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get(
@@ -111,6 +119,9 @@ def init_db() -> None:
                 wallet TEXT PRIMARY KEY,
                 privy_user_id TEXT,
                 email TEXT,
+                username TEXT,
+                avatar_mime TEXT,
+                avatar_blob BLOB,
                 created_at TEXT NOT NULL,
                 last_login_at TEXT NOT NULL
             );
@@ -177,6 +188,98 @@ def init_db() -> None:
         }
         if "email" not in columns:
             conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        if "username" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN username TEXT")
+        if "avatar_mime" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN avatar_mime TEXT")
+        if "avatar_blob" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN avatar_blob BLOB")
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase
+            ON users(username COLLATE NOCASE)
+            WHERE username IS NOT NULL
+            """
+        )
+
+
+def delete_user_by_email(email: str) -> dict:
+    """Delete one user and all marketplace data owned by or addressed to them."""
+    email = (email or "").strip()
+    if not email:
+        raise ValueError("User email is required.")
+
+    with db() as conn:
+        users = conn.execute(
+            """
+            SELECT wallet, email
+            FROM users
+            WHERE email IS NOT NULL AND lower(email) = lower(?)
+            """,
+            (email,),
+        ).fetchall()
+
+        if not users:
+            raise LookupError(f"User not found: {email}")
+        if len(users) > 1:
+            raise RuntimeError(
+                f"More than one user matches this email: {email}"
+            )
+
+        wallet = users[0]["wallet"]
+
+        # Requests must be removed before commissions/users because they
+        # reference both tables without ON DELETE CASCADE.
+        requests_deleted = conn.execute(
+            """
+            DELETE FROM commission_requests
+            WHERE artist_wallet = ? OR buyer_wallet = ?
+            """,
+            (wallet, wallet),
+        ).rowcount
+        commissions_deleted = conn.execute(
+            "DELETE FROM commissions WHERE artist_wallet = ?",
+            (wallet,),
+        ).rowcount
+        users_deleted = conn.execute(
+            "DELETE FROM users WHERE wallet = ?",
+            (wallet,),
+        ).rowcount
+
+    return {
+        "email": users[0]["email"] or email,
+        "wallet": wallet,
+        "requests_deleted": requests_deleted,
+        "commissions_deleted": commissions_deleted,
+        "users_deleted": users_deleted,
+    }
+
+
+def cli() -> int:
+    parser = argparse.ArgumentParser(description="BlueTits server utilities")
+    subparsers = parser.add_subparsers(dest="command")
+
+    deleteuser_parser = subparsers.add_parser(
+        "deleteuser",
+        help="delete a user by email and their related marketplace data",
+    )
+    deleteuser_parser.add_argument("email", help="user email")
+
+    args = parser.parse_args()
+    if args.command == "deleteuser":
+        try:
+            result = delete_user_by_email(args.email)
+        except (LookupError, RuntimeError, ValueError) as error:
+            parser.error(str(error))
+
+        print(
+            "Deleted user {email} ({wallet}); removed {commissions_deleted} "
+            "commission(s) and {requests_deleted} request(s).".format(**result)
+        )
+        return 0
+
+    parser.print_help()
+    return 0
 
 
 def normalize_wallet(value: str | None) -> str:
@@ -184,6 +287,36 @@ def normalize_wallet(value: str | None) -> str:
     if not WALLET_RE.match(value):
         raise ValueError("Invalid EVM wallet address.")
     return value.lower()
+
+
+def normalize_username(value: str | None) -> str:
+    username = (value or "").strip().lower()
+    if username.startswith("@"):
+        username = username[1:]
+    if not USERNAME_RE.fullmatch(username):
+        raise ValueError(
+            "Username must be 3-24 characters: lowercase letters, numbers, "
+            "underscore or hyphen."
+        )
+    if username in RESERVED_USERNAMES:
+        raise ValueError("This username is reserved.")
+    return username
+
+
+def avatar_url(wallet: str) -> str:
+    return f"/api/users/{wallet}/avatar"
+
+
+def public_user_json(row: sqlite3.Row) -> dict:
+    return {
+        "wallet": row["wallet"],
+        "username": row["username"],
+        "avatar_url": avatar_url(row["wallet"])
+        if row["avatar_blob"] is not None
+        else None,
+        "created_at": row["created_at"],
+        "last_login_at": row["last_login_at"],
+    }
 
 
 def current_wallet(required: bool = True) -> str | None:
@@ -421,6 +554,11 @@ def index():
     return send_from_directory(BASE_DIR, "index.html")
 
 
+@app.get("/@<username>")
+def public_profile_page(username):
+    return send_from_directory(BASE_DIR, "index.html")
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True})
@@ -479,15 +617,17 @@ def create_session():
 
     session["wallet"] = wallet
 
-    return jsonify(
-        {
-            "user": {
-                "wallet": wallet,
-                "privy_user_id": privy_user_id,
-                "email": email,
-            }
-        }
-    )
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT wallet, username, avatar_mime, avatar_blob,
+                   created_at, last_login_at
+            FROM users WHERE wallet = ?
+            """,
+            (wallet,),
+        ).fetchone()
+
+    return jsonify({"user": public_user_json(row)})
 
 
 @app.delete("/api/session")
@@ -506,7 +646,8 @@ def me():
     with db() as conn:
         row = conn.execute(
             """
-            SELECT wallet, privy_user_id, email, created_at, last_login_at
+            SELECT wallet, username, avatar_mime, avatar_blob,
+                   created_at, last_login_at
             FROM users
             WHERE wallet = ?
             """,
@@ -517,7 +658,48 @@ def me():
         session.clear()
         return jsonify({"user": None})
 
-    return jsonify({"user": dict(row)})
+    return jsonify({"user": public_user_json(row)})
+
+
+@app.post("/api/profile")
+def update_profile():
+    wallet = current_wallet()
+    data = json_body()
+    username = normalize_username(data.get("username"))
+    avatar = data.get("avatar")
+
+    avatar_values = (None, None)
+    if avatar:
+        avatar_values = decode_image_data_url(avatar, MAX_AVATAR_IMAGE_BYTES)
+
+    try:
+        with db() as conn:
+            if avatar:
+                conn.execute(
+                    """
+                    UPDATE users
+                    SET username = ?, avatar_mime = ?, avatar_blob = ?
+                    WHERE wallet = ?
+                    """,
+                    (username, avatar_values[0], avatar_values[1], wallet),
+                )
+            else:
+                conn.execute(
+                    "UPDATE users SET username = ? WHERE wallet = ?",
+                    (username, wallet),
+                )
+            row = conn.execute(
+                """
+                SELECT wallet, username, avatar_mime, avatar_blob,
+                       created_at, last_login_at
+                FROM users WHERE wallet = ?
+                """,
+                (wallet,),
+            ).fetchone()
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "This username is already taken."}), 409
+
+    return jsonify({"user": public_user_json(row)})
 
 
 @app.get("/api/users")
@@ -527,8 +709,9 @@ def users():
             """
             SELECT
                 u.wallet,
-                u.privy_user_id,
-                u.email,
+                u.username,
+                u.avatar_mime,
+                u.avatar_blob,
                 u.created_at,
                 u.last_login_at,
                 COUNT(c.id) AS commission_count,
@@ -536,6 +719,7 @@ def users():
             FROM users u
             LEFT JOIN commissions c
                 ON c.artist_wallet = u.wallet
+            WHERE u.username IS NOT NULL
             GROUP BY u.wallet
             ORDER BY u.last_login_at DESC, u.created_at DESC
             """
@@ -550,7 +734,10 @@ def users():
         result.append(
             {
                 "wallet": row["wallet"],
-                "email": row["email"],
+                "username": row["username"],
+                "avatar_url": avatar_url(row["wallet"])
+                if row["avatar_blob"] is not None
+                else None,
                 "commission_count": row["commission_count"],
                 "cover_url": cover_url,
                 "created_at": row["created_at"],
@@ -568,7 +755,8 @@ def user_profile(wallet):
     with db() as conn:
         user = conn.execute(
             """
-            SELECT wallet, privy_user_id, email, created_at, last_login_at
+            SELECT wallet, username, avatar_mime, avatar_blob,
+                   created_at, last_login_at
             FROM users
             WHERE wallet = ?
             """,
@@ -590,14 +778,63 @@ def user_profile(wallet):
 
     return jsonify(
         {
-            "user": {
-                "wallet": user["wallet"],
-                "email": user["email"],
-                "created_at": user["created_at"],
-                "last_login_at": user["last_login_at"],
-            },
+            "user": public_user_json(user),
             "commissions": [commission_json(row) for row in rows],
         }
+    )
+
+
+@app.get("/api/profiles/<username>")
+def profile_by_username(username):
+    username = normalize_username(username)
+
+    with db() as conn:
+        user = conn.execute(
+            """
+            SELECT wallet, username, avatar_mime, avatar_blob,
+                   created_at, last_login_at
+            FROM users
+            WHERE username = ? COLLATE NOCASE
+            """,
+            (username,),
+        ).fetchone()
+
+        if not user:
+            return jsonify({"error": "Profile not found."}), 404
+
+        rows = conn.execute(
+            """
+            SELECT * FROM commissions
+            WHERE artist_wallet = ?
+            ORDER BY id DESC
+            """,
+            (user["wallet"],),
+        ).fetchall()
+
+    return jsonify(
+        {
+            "user": public_user_json(user),
+            "commissions": [commission_json(row) for row in rows],
+        }
+    )
+
+
+@app.get("/api/users/<wallet>/avatar")
+def user_avatar(wallet):
+    wallet = normalize_wallet(wallet)
+    with db() as conn:
+        row = conn.execute(
+            "SELECT avatar_mime, avatar_blob FROM users WHERE wallet = ?",
+            (wallet,),
+        ).fetchone()
+
+    if not row or row["avatar_blob"] is None:
+        return jsonify({"error": "Avatar not found."}), 404
+
+    return Response(
+        row["avatar_blob"],
+        mimetype=row["avatar_mime"],
+        headers={"Cache-Control": "public, max-age=300"},
     )
 
 
@@ -1100,6 +1337,9 @@ init_db()
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        raise SystemExit(cli())
+
     app.run(
         host=os.environ.get("HOST", "127.0.0.1"),
         port=int(os.environ.get("PORT", "8000")),
