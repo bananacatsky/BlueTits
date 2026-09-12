@@ -9,6 +9,10 @@ test_pics
 __pycache__/
 *.py[cod]
 
+# Frontend
+node_modules/
+dist/
+
 # Local SQLite state
 *.sqlite3
 *.sqlite3-shm

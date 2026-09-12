@@ -1,0 +1,11 @@
+{
+  "name": "bluetits",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:all": "python dev.py",
+    "dev:backend": "python backend/server.py",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  }
+}

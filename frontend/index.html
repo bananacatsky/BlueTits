@@ -848,7 +848,7 @@
           <h1>Artists</h1>
         </div>
         <p class="home-note">
-          Users, commission options, requests and delivery images now come from Flask + SQLite. Privy still creates the actual wallets, and payments use Arc Testnet.
+          Users, commission options, requests and delivery images now come from Flask + SQLite. Privy creates the wallets, and artists choose the USDC payment network.
         </p>
       </div>
 
@@ -989,8 +989,9 @@
       <div class="field"><label for="offerAmount">Final price, USD</label><input id="offerAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required></div>
       <div class="price-row">
         <div class="field"><label>Token</label><input value="USDC" readonly></div>
-        <div class="field"><label>Network</label><input value="Arc Testnet" readonly></div>
+        <div class="field"><label for="offerNetwork">Network</label><select id="offerNetwork" required></select></div>
       </div>
+      <div class="notice" id="offerNetworkNotice"></div>
       <div class="field"><label>Payout wallet</label><input id="offerRecipient" readonly></div>
       <div class="actions"><button class="button" data-close="offerDialog" type="button">Cancel</button><button class="button primary" type="submit">Send offer</button></div>
     </form>
@@ -999,19 +1000,20 @@
   <dialog id="paymentDialog">
     <div class="modal">
       <div class="modal-head">
-        <div><div class="eyebrow">Real testnet payment</div><h2>Pay with Privy</h2></div>
+        <div><div class="eyebrow">USDC payment</div><h2>Pay with Privy</h2></div>
         <button class="close" data-close="paymentDialog" type="button">×</button>
       </div>
-      <div class="notice">The browser signs the transaction with Privy. Flask then independently verifies the Arc Testnet receipt before marking the order paid.</div>
+      <div class="notice" id="paymentNotice"></div>
       <div class="privy-card">
+        <div class="wallet-row"><span class="wallet-label">Network</span><span class="wallet-value" id="payNetwork"></span></div>
         <div class="wallet-row"><span class="wallet-label">From</span><span class="wallet-value" id="payFrom"></span></div>
         <div class="wallet-row"><span class="wallet-label">To artist</span><span class="wallet-value" id="payTo"></span></div>
         <div class="wallet-row"><span class="wallet-label">Pay</span><span class="wallet-value" id="payAmount"></span></div>
         <div class="wallet-row"><span class="wallet-label">Balance</span><span class="wallet-value" id="payBalance"></span></div>
       </div>
-      <div class="hint">Need test USDC? <a class="inline-link" href="https://faucet.circle.com/" target="_blank">Circle Faucet</a> → Arc Testnet.</div>
+      <div class="hint" id="paymentFundingHint"></div>
       <div class="status" id="paymentStatus"></div>
-      <div class="actions"><button class="button" data-close="paymentDialog" type="button">Cancel</button><button class="button primary" id="confirmPaymentButton" type="button">Send testnet USDC</button></div>
+      <div class="actions"><button class="button" data-close="paymentDialog" type="button">Cancel</button><button class="button primary" id="confirmPaymentButton" type="button">Send USDC</button></div>
     </div>
   </dialog>
 
@@ -1046,8 +1048,8 @@
   </script>
 
   <script type="module">
-    import React, {useEffect} from "react";
-    import {createRoot} from "react-dom/client";
+    import React, {useEffect} from "https://esm.sh/react@19.1.1";
+    import {createRoot} from "https://esm.sh/react-dom@19.1.1/client";
     import {
       PrivyProvider,
       useFiatOnramp,
@@ -1060,6 +1062,12 @@
     } from "https://esm.sh/@privy-io/js-sdk-core@0.73.0?bundle";
 
     const $ = id => document.getElementById(id);
+    const API_BASE = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+    function apiUrl(path) {
+      if (/^(?:https?:|data:|blob:)/i.test(path)) return path;
+      return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+    }
 
     let config = null;
     let privy = null;
@@ -1091,8 +1099,9 @@
     let profileSetupResolver = null;
 
     async function api(path, options = {}) {
-      const response = await fetch(path, {
+      const response = await fetch(apiUrl(path), {
         ...options,
+        credentials: "include",
         headers: {
           ...(options.body ? {"Content-Type": "application/json"} : {}),
           ...(options.headers || {})
@@ -1119,6 +1128,15 @@
 
     function networkFor(key = activeNetworkKey) {
       return config?.networks?.[key] || config?.networks?.arc_testnet;
+    }
+
+    function networkKeyForOffer(offer) {
+      if (offer?.network_key && config?.networks?.[offer.network_key]) {
+        return offer.network_key;
+      }
+      return Object.keys(config?.networks || {}).find(
+        key => Number(config.networks[key].chain_id) === Number(offer?.chain_id)
+      );
     }
 
     function chainIdHex(chainId) {
@@ -1217,9 +1235,9 @@
         card.type = "button";
 
         const cover = user.avatar_url
-          ? `<img src="${user.avatar_url}" alt="">`
+          ? `<img src="${apiUrl(user.avatar_url)}" alt="">`
           : user.cover_url
-            ? `<img src="${user.cover_url}" alt="">`
+            ? `<img src="${apiUrl(user.cover_url)}" alt="">`
           : `<div class="placeholder">BT</div>`;
 
         card.innerHTML = `
@@ -1258,7 +1276,7 @@
       $("profileName").textContent = `@${activeProfile.user.username}`;
       $("profileWallet").textContent = shortAddress(activeProfile.user.wallet);
       $("profileAvatar").classList.toggle("visible", Boolean(activeProfile.user.avatar_url));
-      if (activeProfile.user.avatar_url) $("profileAvatar").src = activeProfile.user.avatar_url;
+      if (activeProfile.user.avatar_url) $("profileAvatar").src = apiUrl(activeProfile.user.avatar_url);
       $("profileBio").textContent =
         ownProfile()
           ? "This is your Privy-backed artist profile. Add commission options below."
@@ -1297,7 +1315,7 @@
         card.className = `commission-card${ownProfile() ? " owned" : ""}`;
         card.innerHTML = `
           <button class="delete-card" type="button">×</button>
-          <img src="${item.image_url}" alt="">
+          <img src="${apiUrl(item.image_url)}" alt="">
           <div class="card-body">
             <h3 class="card-title"></h3>
             <p class="card-description"></p>
@@ -1472,7 +1490,7 @@
             try {
               await openPayment(req);
             } catch (error) {
-              alert(`Could not prepare Arc Testnet payment: ${error.message}`);
+              alert(`Could not prepare payment: ${error.message}`);
             }
           });
           card.querySelector(".offer-action")?.appendChild(pay);
@@ -1492,7 +1510,7 @@
           info.style.marginTop = "12px";
           const link = document.createElement("a");
           link.className = "tx-link";
-          const paymentNetwork = networkFor(config.commission_payment_network);
+          const paymentNetwork = networkFor(networkKeyForOffer(req.offer));
           link.href = `${paymentNetwork.explorer}/tx/${req.payment.tx_hash}`;
           link.target = "_blank";
           link.textContent = `${paymentNetwork.name} transaction`;
@@ -1504,7 +1522,7 @@
           const delivery = document.createElement("div");
           delivery.className = "delivery-box";
           delivery.innerHTML = `<img alt="Delivered artwork"><div class="delivery-copy"></div>`;
-          delivery.querySelector("img").src = req.delivery.image_url;
+          delivery.querySelector("img").src = apiUrl(req.delivery.image_url);
           delivery.querySelector(".delivery-copy").textContent =
             `${req.delivery.message || "Artwork delivered."} · ${new Date(req.delivery.delivered_at).toLocaleString()}`;
           card.appendChild(delivery);
@@ -1890,7 +1908,7 @@
       $("explorerAccountLink").href = `${network.explorer}/address/${privyWallet.address}`;
       $("explorerAccountLink").textContent = network.explorer_name;
       $("fundingNote").textContent = network.environment === "testnet"
-        ? "Test USDC has no real-world value. Add funds opens the Arc Testnet faucet."
+        ? `Test USDC has no real-world value. Add funds opens the ${network.name} faucet.`
         : "Mainnet funds have real value. Add funds opens your configured fiat on-ramp.";
       $("popBalance").textContent = "Loading…";
 
@@ -2137,8 +2155,26 @@
       pendingRequestId = req.id;
       $("offerAmount").value = "1.00";
       $("offerRecipient").value = privyWallet.address;
+      $("offerNetwork").innerHTML = "";
+      for (const [key, network] of Object.entries(config.networks)) {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = network.name;
+        option.selected = key === activeNetworkKey;
+        $("offerNetwork").appendChild(option);
+      }
+      updateOfferNetworkNotice();
       $("offerDialog").showModal();
     }
+
+    function updateOfferNetworkNotice() {
+      const network = networkFor($("offerNetwork").value);
+      $("offerNetworkNotice").textContent = network.environment === "mainnet"
+        ? `${network.name} uses real USDC and requires real ${network.native_currency.symbol} for gas.`
+        : `${network.name} is a test network; its funds have no real-world value.`;
+    }
+
+    $("offerNetwork").addEventListener("change", updateOfferNetworkNotice);
 
     $("offerForm").addEventListener("submit", async event => {
       event.preventDefault();
@@ -2146,7 +2182,10 @@
       try {
         await api(`/api/requests/${pendingRequestId}/offer`, {
           method: "POST",
-          body: JSON.stringify({amount: $("offerAmount").value})
+          body: JSON.stringify({
+            amount: $("offerAmount").value,
+            network: $("offerNetwork").value
+          })
         });
 
         $("offerDialog").close();
@@ -2158,7 +2197,7 @@
       }
     });
 
-    // ----- Network-aware balances and Arc Testnet commission payment -----
+    // ----- Network-aware balances and commission payment -----
 
     async function rpc(networkKey, method, params = []) {
       const network = networkFor(networkKey);
@@ -2211,15 +2250,37 @@
     }
 
     async function openPayment(req) {
-      const paymentNetworkKey = config.commission_payment_network;
+      const paymentNetworkKey = networkKeyForOffer(req.offer);
+      if (!paymentNetworkKey) throw new Error("The offer uses an unsupported network.");
       if (activeNetworkKey !== paymentNetworkKey) {
         await selectNetwork(paymentNetworkKey);
       }
+      const paymentNetwork = networkFor(paymentNetworkKey);
       pendingPaymentRequest = req;
+      $("payNetwork").textContent = paymentNetwork.name;
       $("payFrom").textContent = privyWallet.address;
       $("payTo").textContent = req.offer.recipient;
       $("payAmount").textContent = `$${formatUsd(req.offer.amount)} USDC`;
+      $("paymentNotice").textContent = paymentNetwork.environment === "mainnet"
+        ? `This is a real ${paymentNetwork.name} payment. Real USDC will be transferred and ${paymentNetwork.native_currency.symbol} is required for gas.`
+        : `The browser signs on ${paymentNetwork.name}. Flask verifies the receipt before marking the order paid.`;
+      const fundingHint = $("paymentFundingHint");
+      fundingHint.replaceChildren();
+      if (paymentNetwork.environment === "mainnet") {
+        fundingHint.textContent = "Check the network, recipient and amount carefully before confirming.";
+      } else if (paymentNetwork.faucet_url) {
+        fundingHint.append("Need test USDC? ");
+        const faucetLink = document.createElement("a");
+        faucetLink.className = "inline-link";
+        faucetLink.href = paymentNetwork.faucet_url;
+        faucetLink.target = "_blank";
+        faucetLink.rel = "noopener";
+        faucetLink.textContent = `${paymentNetwork.name} faucet`;
+        fundingHint.appendChild(faucetLink);
+      }
+      $("confirmPaymentButton").textContent = `Send USDC on ${paymentNetwork.name}`;
       $("paymentStatus").textContent = "";
+      $("paymentStatus").style.color = "";
       $("paymentDialog").showModal();
 
       getUsdcBalance(privyWallet.address, paymentNetworkKey)
@@ -2236,7 +2297,8 @@
 
       try {
         const amount = moneyToMicros(pendingPaymentRequest.offer.amount);
-        const paymentNetworkKey = config.commission_payment_network;
+        const paymentNetworkKey = networkKeyForOffer(pendingPaymentRequest.offer);
+        if (!paymentNetworkKey) throw new Error("The offer uses an unsupported network.");
         const paymentNetwork = networkFor(paymentNetworkKey);
         const balance = await getUsdcBalance(privyWallet.address, paymentNetworkKey);
 
@@ -2257,12 +2319,12 @@
           }]
         });
 
-        status.textContent = "Sent. Flask is verifying the Arc receipt…";
+        status.textContent = `Sent. Flask is verifying the ${paymentNetwork.name} receipt…`;
 
         let confirmed = false;
         let lastError = null;
 
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 90; i++) {
           await new Promise(resolve => setTimeout(resolve, 1000));
 
           try {
