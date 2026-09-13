@@ -14,12 +14,22 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from pathlib import Path
 
 import jwt
+from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request
-from jwt import InvalidKeyError, InvalidTokenError
+from jwt import (
+    ExpiredSignatureError,
+    InvalidAudienceError,
+    InvalidIssuerError,
+    InvalidKeyError,
+    InvalidSignatureError,
+    InvalidTokenError,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
+load_dotenv(PROJECT_DIR / ".env")
+
 DB_PATH = Path(os.environ.get("BLUETITS_DB", PROJECT_DIR / "bluetits.sqlite3"))
 FRONTEND_ORIGINS = {
     origin.strip().rstrip("/")
@@ -377,9 +387,33 @@ def current_privy_user_id(required: bool = True) -> str | None:
         raise ServerConfigurationError(
             "PRIVY_VERIFICATION_KEY is not a valid ES256 public key."
         ) from error
+    except ExpiredSignatureError as error:
+        raise PermissionError("Privy access token has expired.") from error
+    except InvalidAudienceError as error:
+        raise PermissionError(
+            "Privy access token belongs to a different app ID."
+        ) from error
+    except InvalidIssuerError as error:
+        raise PermissionError("Privy access token has an invalid issuer.") from error
+    except InvalidSignatureError as error:
+        app.logger.warning(
+            "Privy access-token signature does not match the configured key."
+        )
+        raise PermissionError(
+            "Privy token signature does not match PRIVY_VERIFICATION_KEY."
+        ) from error
     except InvalidTokenError as error:
-        app.logger.info("Rejected Privy access token: %s", error)
-        raise PermissionError("Invalid or expired Privy access token.") from error
+        app.logger.warning(
+            "Rejected Privy access token (%s): %s",
+            type(error).__name__,
+            error,
+        )
+        message = "Invalid or expired Privy access token."
+        if app.debug:
+            message = (
+                f"Invalid Privy access token ({type(error).__name__}: {error})."
+            )
+        raise PermissionError(message) from error
 
     privy_user_id = claims.get("sub")
     if not isinstance(privy_user_id, str) or not privy_user_id.startswith(
