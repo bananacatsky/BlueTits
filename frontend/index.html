@@ -1063,10 +1063,15 @@
 
     const $ = id => document.getElementById(id);
     const API_BASE = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+    const APP_BASE = import.meta.env.BASE_URL;
 
     function apiUrl(path) {
       if (/^(?:https?:|data:|blob:)/i.test(path)) return path;
       return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+    }
+
+    function appUrl(path = "") {
+      return `${APP_BASE}${String(path).replace(/^\/+/, "")}`;
     }
 
     let config = null;
@@ -1099,11 +1104,16 @@
     let profileSetupResolver = null;
 
     async function api(path, options = {}) {
+      let accessToken = null;
+      if (privy && privyUser) {
+        accessToken = await privy.getAccessToken();
+      }
+
       const response = await fetch(apiUrl(path), {
         ...options,
-        credentials: "include",
         headers: {
           ...(options.body ? {"Content-Type": "application/json"} : {}),
+          ...(accessToken ? {Authorization: `Bearer ${accessToken}`} : {}),
           ...(options.headers || {})
         }
       });
@@ -1263,7 +1273,7 @@
       activeProfile = data;
       $("homeView").classList.remove("active");
       $("profileView").classList.add("active");
-      history.replaceState(null, "", `/@${encodeURIComponent(data.user.username)}`);
+      history.replaceState(null, "", appUrl(`@${encodeURIComponent(data.user.username)}`));
       await refreshRequests();
       renderProfile();
       setTab("commissions");
@@ -1538,7 +1548,7 @@
       activeProfileUsername = null;
       $("profileView").classList.remove("active");
       $("homeView").classList.add("active");
-      history.replaceState(null, "", "/");
+      history.replaceState(null, "", appUrl());
       loadArtists();
       scrollTo({top: 0, behavior: "instant"});
     }
@@ -1643,7 +1653,6 @@
         method: "POST",
         body: JSON.stringify({
           wallet: wallet.address,
-          privy_user_id: user.id,
           email: privyEmail
         })
       });
@@ -1714,8 +1723,6 @@
       if (sessionData?.user) {
         await ensureWallet(sessionData.user);
       } else {
-        // Keep Flask auth aligned with Privy auth.
-        try { await api("/api/session", {method: "DELETE"}); } catch (_) {}
         privyUser = null;
         privyWallet = null;
         privyProvider = null;
@@ -2423,7 +2430,10 @@
         await loadArtists();
         await initPrivy();
 
-        const match = location.pathname.match(/^\/@([a-z0-9_-]+)$/i);
+        const routePath = location.pathname.startsWith(APP_BASE)
+          ? location.pathname.slice(APP_BASE.length)
+          : "";
+        const match = routePath.match(/^@([a-z0-9_-]+)$/i);
         if (match) await openProfile(match[1]);
       } catch (error) {
         console.error(error);

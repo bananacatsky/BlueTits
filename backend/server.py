@@ -13,7 +13,9 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request, session
+import jwt
+from flask import Flask, Response, jsonify, request
+from jwt import InvalidKeyError, InvalidTokenError
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -33,6 +35,10 @@ PRIVY_CLIENT_ID = os.environ.get(
     "PRIVY_CLIENT_ID",
     "client-WY6d8c5MW5M2jgjRZAy7oiet5LjQsEvJNiUCRZmZ3XVao",
 )
+PRIVY_VERIFICATION_KEY = os.environ.get(
+    "PRIVY_VERIFICATION_KEY",
+    "",
+).replace("\\n", "\n").strip()
 
 NETWORKS = {
     "arc_testnet": {
@@ -95,21 +101,6 @@ RESERVED_USERNAMES = {
 }
 
 app = Flask(__name__, static_folder=None)
-app.secret_key = os.environ.get(
-    "BLUETITS_SECRET_KEY",
-    "dev-only-change-me-before-deployment",
-)
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE=os.environ.get(
-        "BLUETITS_COOKIE_SAMESITE",
-        "Lax",
-    ),
-    SESSION_COOKIE_SECURE=os.environ.get(
-        "BLUETITS_COOKIE_SECURE",
-        "0",
-    ) == "1",
-)
 
 
 @app.after_request
@@ -117,8 +108,9 @@ def add_cors_headers(response):
     origin = request.headers.get("Origin", "").rstrip("/")
     if origin and origin in FRONTEND_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Authorization, Content-Type"
+        )
         response.headers["Access-Control-Allow-Methods"] = (
             "GET, POST, DELETE, OPTIONS"
         )
@@ -225,6 +217,13 @@ def init_db() -> None:
             CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase
             ON users(username COLLATE NOCASE)
             WHERE username IS NOT NULL
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_users_privy_user_id
+            ON users(privy_user_id)
+            WHERE privy_user_id IS NOT NULL AND privy_user_id != ''
             """
         )
 
@@ -345,12 +344,67 @@ def public_user_json(row: sqlite3.Row) -> dict:
     }
 
 
+class ServerConfigurationError(RuntimeError):
+    pass
+
+
+def current_privy_user_id(required: bool = True) -> str | None:
+    authorization = request.headers.get("Authorization", "").strip()
+    if not authorization:
+        if required:
+            raise PermissionError("Authentication required.")
+        return None
+
+    scheme, separator, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not separator or not token.strip():
+        raise PermissionError("Invalid Authorization header.")
+
+    if not PRIVY_VERIFICATION_KEY:
+        raise ServerConfigurationError(
+            "PRIVY_VERIFICATION_KEY is not configured on the server."
+        )
+
+    try:
+        claims = jwt.decode(
+            token.strip(),
+            PRIVY_VERIFICATION_KEY,
+            algorithms=["ES256"],
+            audience=PRIVY_APP_ID,
+            issuer="privy.io",
+            options={"require": ["aud", "exp", "iat", "iss", "sub"]},
+        )
+    except (InvalidKeyError, ValueError) as error:
+        raise ServerConfigurationError(
+            "PRIVY_VERIFICATION_KEY is not a valid ES256 public key."
+        ) from error
+    except InvalidTokenError as error:
+        app.logger.info("Rejected Privy access token: %s", error)
+        raise PermissionError("Invalid or expired Privy access token.") from error
+
+    privy_user_id = claims.get("sub")
+    if not isinstance(privy_user_id, str) or not privy_user_id.startswith(
+        "did:privy:"
+    ):
+        raise PermissionError("Invalid Privy access token subject.")
+
+    return privy_user_id
+
+
 def current_wallet(required: bool = True) -> str | None:
-    wallet = session.get("wallet")
-    if wallet:
-        return wallet
+    privy_user_id = current_privy_user_id(required=required)
+    if not privy_user_id:
+        return None
+
+    with db() as conn:
+        row = conn.execute(
+            "SELECT wallet FROM users WHERE privy_user_id = ? LIMIT 1",
+            (privy_user_id,),
+        ).fetchone()
+
+    if row:
+        return row["wallet"]
     if required:
-        raise PermissionError("Authentication required.")
+        raise PermissionError("Privy account is not registered.")
     return None
 
 
@@ -599,6 +653,12 @@ def handle_permission_error(error):
     return jsonify({"error": str(error)}), 401
 
 
+@app.errorhandler(ServerConfigurationError)
+def handle_configuration_error(error):
+    app.logger.error("Server authentication configuration error: %s", error)
+    return jsonify({"error": str(error)}), 503
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True})
@@ -616,27 +676,39 @@ def config():
     )
 
 
-# IMPORTANT:
-# This demo endpoint trusts the wallet address that the browser reports after a
-# successful Privy login. That is convenient for a prototype, but it is NOT
-# sufficient authentication for production. The next hardening step is to send
-# a Privy access/identity token to this endpoint and verify it server-side before
-# accepting the wallet/user identity.
 @app.post("/api/session")
 def create_session():
+    privy_user_id = current_privy_user_id()
     data = json_body()
     wallet = normalize_wallet(data.get("wallet"))
-    privy_user_id = str(data.get("privy_user_id") or "")[:300]
     email = str(data.get("email") or "").strip()[:320]
     now = utcnow()
 
     with db() as conn:
-        existing = conn.execute(
-            "SELECT wallet FROM users WHERE wallet = ?",
+        existing_identity = conn.execute(
+            "SELECT wallet FROM users WHERE privy_user_id = ? LIMIT 1",
+            (privy_user_id,),
+        ).fetchone()
+        existing_wallet = conn.execute(
+            "SELECT privy_user_id FROM users WHERE wallet = ?",
             (wallet,),
         ).fetchone()
 
-        if existing:
+        if existing_identity and existing_identity["wallet"] != wallet:
+            return jsonify(
+                {"error": "This Privy account is linked to another wallet."}
+            ), 409
+
+        if (
+            existing_wallet
+            and existing_wallet["privy_user_id"]
+            and existing_wallet["privy_user_id"] != privy_user_id
+        ):
+            return jsonify(
+                {"error": "This wallet is linked to another Privy account."}
+            ), 409
+
+        if existing_wallet:
             conn.execute(
                 """
                 UPDATE users
@@ -654,8 +726,6 @@ def create_session():
                 (wallet, privy_user_id, email, now, now),
             )
 
-    session["wallet"] = wallet
-
     with db() as conn:
         row = conn.execute(
             """
@@ -671,7 +741,9 @@ def create_session():
 
 @app.delete("/api/session")
 def delete_session():
-    session.clear()
+    # Access tokens are stateless. Privy invalidates its browser-side session;
+    # this endpoint only verifies that the logout request was authenticated.
+    current_privy_user_id()
     return jsonify({"ok": True})
 
 
@@ -694,7 +766,6 @@ def me():
         ).fetchone()
 
     if not row:
-        session.clear()
         return jsonify({"user": None})
 
     return jsonify({"user": public_user_json(row)})
